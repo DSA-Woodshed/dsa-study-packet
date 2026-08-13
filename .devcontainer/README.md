@@ -34,35 +34,37 @@ practice loop. It cannot prove account state, entitlement, extension-host
 health, editor tabs, or the absence of migration popups. Those require one
 new Codespace:
 
-1. Push the branch under test, then record its current remote head:
+1. Point a uniquely named disposable branch at the commit under test and push
+   that branch. Use the `codespaces-acceptance-` prefix so it cannot be
+   mistaken for a product branch:
 
    ```bash
-   BRANCH="<branch-under-test>"
-   EXPECTED_SHA="$(gh api \
-     "repos/Jesssullivan/dsa-study-packet/commits/${BRANCH}" \
-     --jq .sha)"
-   printf 'EXPECTED_SHA=%s\n' "$EXPECTED_SHA"
+   BRANCH="codespaces-acceptance-<unique-suffix>"
+   git branch "$BRANCH" <commit-under-test>
+   git push origin "$BRANCH"
+   just codespaces-acceptance-plan "$BRANCH"
    ```
 
-2. Use the branch-specific creation page,
-   `https://codespaces.new/Jesssullivan/dsa-study-packet/tree/<branch-under-test>`.
-   Do not add `?quickstart=1`, which changes this into a resume flow.
-3. After the browser editor has attached, use its integrated terminal to
-   record:
+   The command resolves the remote branch through the GitHub API, prints its
+   exact `EXPECTED_SHA`, and proves repository API authentication. That local
+   GitHub authentication is separate from Copilot account state.
+2. Use the emitted `CREATE_URL`. Its shape is
+   `https://codespaces.new/Jesssullivan/dsa-study-packet/tree/<disposable-branch>`.
+   It has no quickstart query because acceptance must create a new workspace,
+   not resume a matching one.
+3. After the browser editor attaches, use its integrated terminal to assert
+   the exact checkout:
 
    ```bash
-   printf 'CHECKOUT_SHA=%s\n' "$(git rev-parse HEAD)"
-   printf 'CODESPACES=%s\n' "${CODESPACES:-unset}"
-   printf 'CODESPACE_NAME=%s\n' "${CODESPACE_NAME:-unset}"
-   code --version
-   code --list-extensions --show-versions | sort
+   just codespaces-acceptance-verify <EXPECTED_SHA>
    ```
 
-   Require `CHECKOUT_SHA` to equal the `EXPECTED_SHA` recorded immediately
-   before creation. A branch name alone is not acceptance evidence. The
-   lightweight container intentionally does not install the GitHub CLI;
-   authenticate and create the Codespace from the local machine, then prove
-   Copilot account state in the editor itself.
+   The verifier fails on a non-Codespaces environment, wrong repository, wrong
+   SHA, tracked mutation, or unexpected untracked input. Gitignored private
+   practice state does not invalidate the commit proof. It records VS Code and
+   extension versions, but deliberately
+   reports Copilot sign-in and entitlement as manual UI checks. A branch name,
+   repository access, or a successful checkout proves none of those.
 4. In the VS Code UI, separately confirm Copilot Chat sign-in, entitlement,
    the Interviewer agent, and that no extension migration/install popup
    appeared. Repository and GitHub CLI authentication do not prove Copilot
@@ -71,7 +73,8 @@ new Codespace:
    test tabs open, then use ordinary saved Python comments or a docstring,
    `/continue`, focused tests, the REPL, `STATE: CLOSE`, and an idempotent
    finish.
-6. Stop or delete the test Codespace when evidence is captured.
+6. Stop or delete the test Codespace when evidence is captured. Remove the
+   disposable branch through the separately reviewed remote-ref cleanup.
 
 Do not describe a resumed Codespace, a local devcontainer, or the headless
 smoke workflow as this acceptance. If the live check fails, preserve the exact

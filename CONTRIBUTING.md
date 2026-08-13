@@ -48,19 +48,22 @@ your changes will be silently overwritten and the drift guard will still fail.
 
 ## Codespaces acceptance
 
-Acceptance evidence must come from a newly created workspace at the current
-`main`, not a resumed Codespace. Open
-`https://codespaces.new/Jesssullivan/dsa-study-packet`, create the Codespace,
-and record:
+Acceptance evidence must come from a newly created workspace at the exact
+commit under test, not a resumed Codespace. Push a disposable
+`codespaces-acceptance-<unique-suffix>` branch, then run:
 
 ```bash
-git rev-parse HEAD
-git rev-parse origin/main
+just codespaces-acceptance-plan codespaces-acceptance-<unique-suffix>
 ```
 
-The SHAs must match. Then verify Copilot Chat separately in the VS Code UI:
-the extension is present, the account is signed in, and the account has
-Copilot access. Codespaces detection alone proves none of those.
+Open the command's branch-specific URL. Its expected shape is
+`https://codespaces.new/Jesssullivan/dsa-study-packet/tree/<disposable-branch>`;
+acceptance links never use quickstart/resume. In the new integrated terminal,
+run `just codespaces-acceptance-verify <EXPECTED_SHA>`. The checkout assertion
+requires the exact commit with no tracked mutation or unexpected untracked
+input; gitignored private practice state is allowed. Repository authentication, Copilot sign-in, and
+Copilot entitlement remain separate evidence fields. Confirm the latter two in
+the VS Code UI.
 
 ## The public-boundary rule (hard rule)
 
@@ -93,4 +96,5 @@ git push origin v2026.7.0
 ```
 
 Release notes are auto-generated from merged PRs; see `CHANGELOG.md` for a
-human-curated running summary between releases.
+human-curated running summary between releases. The published assets remain
+inventoried on [GitHub Releases](https://github.com/Jesssullivan/dsa-study-packet/releases).
