@@ -52,6 +52,7 @@ lint:
     uv run python scripts/check_doc_counts.py
     uv run python scripts/check_agent_instructions.py
     uv run python scripts/check_onboarding.py
+    uv run python scripts/check_migration_readiness.py
     uv run python scripts/check_clarity.py
     uv run python scripts/check_no_stubs.py
     uv run python scripts/validate_appendix_schema.py
@@ -60,6 +61,18 @@ lint:
 public-boundary:
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
+
+# Check owner-sensitive links and the retired packet Pages boundary
+migration-readiness:
+    uv run python scripts/check_migration_readiness.py
+
+# Resolve an already-pushed disposable branch to an exact Codespaces URL/SHA
+codespaces-acceptance-plan branch:
+    uv run python scripts/codespaces_acceptance.py plan --branch {{ quote(branch) }}
+
+# Assert the exact repo and SHA from inside a genuinely new Codespace
+codespaces-acceptance-verify expected_sha:
+    uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }}
 
 # Regenerate agent instruction surfaces from the AGENTS.md persona region
 gen-agents:
