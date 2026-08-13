@@ -44,7 +44,7 @@ jobs:
       # pin per its own security guidance; tool pin matches JUST_VERSION in
       # .devcontainer/setup.sh.
       - name: Install just
-        uses: taiki-e/install-action@v2.85.0
+        uses: taiki-e/install-action@v2.85.4
         with:
           tool: just@1.40.0
 

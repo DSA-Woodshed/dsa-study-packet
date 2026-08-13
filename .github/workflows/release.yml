@@ -38,7 +38,7 @@ jobs:
           prune-cache: "true" # preserve the pre-v9 cache-size behavior
 
       - name: Install just
-        uses: taiki-e/install-action@v2.85.0
+        uses: taiki-e/install-action@v2.85.4
         with:
           tool: just@1.40.0
 
