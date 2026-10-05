@@ -13,28 +13,15 @@ def enter_snapshot() -> Path:
     runfiles_root = Path(__file__).absolute().parents[1]
     snapshot = Path(os.environ["TEST_TMPDIR"]) / "packet"
     snapshot.mkdir()
-    entries = [
-        runfiles_root / name
-        for name in (
-            "src",
-            "scripts",
-            "build_support",
-            "tests",
-            "docs",
-            "reference-sheets",
-            "pyproject.toml",
-            "README.md",
-        )
-    ]
-    for entry in entries:
+    # The module's runfiles tree contains declared inputs at their root-relative
+    # locations. Exclude the runner's generated interpreter/bootstrap only.
+    generated = shutil.ignore_patterns("*.venv", "*_stage2_bootstrap.py")
+    for entry in runfiles_root.iterdir():
         destination = snapshot / entry.name
         if entry.is_dir():
-            shutil.copytree(entry, destination)
+            shutil.copytree(entry, destination, ignore=generated)
         elif entry.is_file():
             shutil.copyfile(entry, destination)
-    (snapshot / "tools").mkdir()
-    for name in ("check.py", "pytest_main.py", "validation_snapshot.py"):
-        shutil.copyfile(runfiles_root / "tools" / name, snapshot / "tools" / name)
     os.chdir(snapshot)
     sys.path.insert(0, str(snapshot / "src"))
     return snapshot

@@ -1,6 +1,7 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("@rules_tectonic//tectonic:defs.bzl", "tectonic_pdf")
+load("//tools:test_lanes.bzl", "BOOKLET_SMOKE_TESTS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -66,7 +67,7 @@ genrule(
 sh_test(
     name = "booklet_smoke",
     size = "small",
-    srcs = ["tests/booklet_pdf_smoke.sh"],
+    srcs = BOOKLET_SMOKE_TESTS,
     args = ["$(rootpath :booklet)"],
     data = [":booklet"],
     tags = ["no-remote-exec"],
@@ -86,6 +87,18 @@ filegroup(
         "tests/**/*.py",
         "build_support/**/*.py",
     ]),
+)
+
+filegroup(
+    name = "test_inventory",
+    srcs = glob(
+        [
+            "tests/**/test_*.py",
+            "tests/**/*_test.py",
+            "tests/**/*.sh",
+        ],
+        allow_empty = True,
+    ),
 )
 
 filegroup(

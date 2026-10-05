@@ -8,7 +8,13 @@ for normal work. Focused learner tests, watch, and REPL remain uv workflows.
 `//tools:check` runs the algorithm and concept suites, pure Python tooling
 tests, Ruff, and mypy. It installs every concept dependency, so optional
 imports cannot hide missing coverage. Editor, git, installation, and command
-integration tests remain in the full uv test lane. The Bazel runner copies only
+integration tests run once in uv's separate integration lane. Both runners
+consume the literal lists in `tools/test_lanes.bzl`; a tracked test must belong
+to exactly one lane, with the public booklet smoke check kept separate.
+`tools/run_integration.py --check-only` validates that partition without running
+tests; invoking it without that flag runs only the integration files. The
+learner's full uv test command still runs every Python test when requested.
+The Bazel runner copies only
 declared files into its writable test directory; resolving a test's filename
 cannot expose an ambient checkout. Property tests use 200 deterministic
 examples, no persisted database, and no host-timing oracle.

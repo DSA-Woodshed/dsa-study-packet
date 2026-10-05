@@ -6,10 +6,12 @@ import sys
 
 import pytest
 from hypothesis import HealthCheck, settings
+from tools.run_integration import declared_tests, load_lanes, validate_lanes
 from tools.validation_snapshot import enter_snapshot
 
 if __name__ == "__main__":
-    enter_snapshot()
+    root = enter_snapshot()
+    validate_lanes(load_lanes(root / "tools" / "test_lanes.bzl"), declared_tests(root))
     # Correctness is deterministic; host scheduling is not a test oracle.
     settings.register_profile(
         "bazel",
