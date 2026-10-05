@@ -94,7 +94,7 @@ publish aggregates deliberately, or not at all.
 
 ## Who Owns The Practice Method
 
-L2 is one loop described from five angles. Each surface owns exactly one
+L2 is one loop described by the following authored surfaces. Each surface owns exactly one
 question about it; none restates another's answer.
 
 | Surface | Owns | Does not own |
@@ -102,12 +102,13 @@ question about it; none restates another's answer.
 | [Sheet 10](../reference/10-whiteboard-performance-protocol.md) | the CLARP method + self-review rubric: *how* to perform | no calendar, no daily loop |
 | [Sheet 11](../reference/11-14-day-whiteboard-ramp.md) | the 14-day editor-first calendar: *when*. Its prose feeds `scripts/practice_day.py`; edit sheet 11 itself for loop changes | no method detail, no rubric |
 | [Evidence page](interview-practice-evidence.md) | *why*: research citations and the video shelf | no calendar, no rubric scoring |
-| `AGENTS.md` persona | *how* the resident interviewer behaves during a rep; regenerates the `.github` surfaces via `just gen-agents` | no citations, no calendar |
-| Skills (`practice-day`, `interviewer`) | routing: which mode and `just` command runs next | no method content of its own |
+| `TRACK-CONTRACT.md` | observable command behavior, candidate ownership, states, and test evidence | no provider selection, no private notes |
+| `just session` and the catalog | guided activity selection and routing through the product engine | no separate provider engine |
+| Personal contribution-fork overlay | optional agent personas, skills, prompts, settings, and notes | no upstream product authority |
 
-A change landing on the wrong row is the drift tell: a calendar edit inside
-sheet 10, a rubric row inside the evidence page, or a citation inside
-`AGENTS.md` all mean the edit belongs one row up or down this table instead.
+A calendar edit belongs in sheet 11; a rubric belongs in the method sheet;
+a research citation belongs in the evidence page. Provider choices belong
+on a personal fork and route through the canonical product commands.
 
 ## Runbook
 

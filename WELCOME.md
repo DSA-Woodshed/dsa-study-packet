@@ -1,30 +1,25 @@
 # Welcome to the woodshed
 
-Start in the editor. Open Copilot Chat and choose one practice mode:
+Choose how to use your time before starting a problem. The guided session
+asks about duration, study or practice, focus, feedback, and workspace.
 
-```text
-/reacto
-/clarp
-/umpire
-/comments
+```bash
+just session
 ```
 
-The command draws the next due problem. Add a topic and problem when you want
-one directly, such as `/reacto arrays two_sum`.
+For a direct editor rep, start with ordinary comments in your own words:
 
-Ask to study a named problem to open read-only committed source and test
-snapshots first. The interviewer waits until you choose implementation or
-tests-first practice, then runs the emitted transition.
+```bash
+just practice-start comments
+just practice-start comments arrays two_sum
+```
 
-Two gitignored files open under `.challenges/workspace/`: your source and your
-test file. Write ordinary source comments or docstrings in your own words,
-before and alongside the code. The comments belong in the file, not the Chat
-composer, and need no prefixes or minimum count. Save, then enter `/continue`
-so the interviewer can read the saved files and return one current state and
-next action. There is no gate to delete. The interviewer does not write your
-code or tests.
+The first command draws the next due problem; the second chooses one.
+`reacto`, `clarp`, and `umpire` offer optional labels for the same practice loop.
 
-Enter `/continue` after a save, or use the terminal controls:
+Two private files open under `.challenges/workspace/`: your source and tests.
+Write reasoning as ordinary source comments or docstrings. Save, then inspect
+the current state and next action. You own the implementation and test edits.
 
 ```bash
 just practice-next
@@ -32,23 +27,17 @@ just practice-test
 just practice-watch
 just practice-repl
 just practice-open
-```
-
-Finish with one useful correction:
-
-```bash
 just practice-finish "state the one fix"
 ```
 
-Copilot is optional. When using it, confirm Chat is signed in and available in
-the VS Code UI. `just practice-start reacto` begins the same rep from a
-terminal. Codespaces needs no repository API key and starts no external agent.
-Claude Code, Codex, and other CLIs are optional tools you launch and
-authenticate yourself.
+To read one committed solution first, use `just practice-study topic problem`.
+It opens read-only source and test snapshots without creating a rep. Choose
+the emitted implementation or tests-first transition when ready.
 
-On the first terminal action, enable auto approve once and keep default
-approvals. Terminal sandboxing is off because preview Bubblewrap cannot nest
-here; the Codespace boundary, narrow allowlist, and pre-tool guard remain.
+An untimed conversation and a timed board rep train different skills. Choose
+the activity that serves today's intent; there is no default clock.
 
-For a slower surface, ask for an untimed conversational rep. Use timed
-board-style practice only when narration under a clock is today's target.
+Core practice works without an assistant or private service. Optional agent
+settings and prompts live on your personal contribution fork. Protected SSO
+capabilities require a separate explicit choice and admission; use
+`just env-check` to inspect environment readiness.

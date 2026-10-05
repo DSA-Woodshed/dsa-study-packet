@@ -1,18 +1,14 @@
-# The Woodshed Track Contract, v2 (provisional)
+# The Woodshed Practice Contract, v3
 
-This Python-derived contract records practice behavior. Landing it
-before the original artifact gate was a process breach. It authorizes no
-runnable language track until validation after operator-declared G and prompt
-75. Future tracks share this validated spine, not code, and own their corpus
-and tooling. A behavioral change bumps the version.
+Python is the implemented practice track. This contract describes its public
+commands and behavior. Additional languages require a justified corpus, tooling,
+and runnable acceptance evidence. Shared behavior changes bump the version.
 
 ## Thesis
 
-Languages are disciplines with different pedagogical centers, so tracks
-never translate one another's problems. What transfers is the practice
-flow: write code as you would at the whiteboard, narrating reasoning in the
-file as you work. There is no whiteboard in a Codespace; the comments are
-the whiteboard.
+Each language needs its own curriculum. The shared flow is to explain your
+reasoning in the source file, implement, test, and keep one useful correction.
+Source comments provide the whiteboard in a Codespace.
 
 ## Command contract
 
@@ -43,7 +39,7 @@ Machine-readable output is UPPERCASE key lines (`STATE`, `SOURCE`, `TEST`,
 `TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`);
 catalog
 readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels as `STATE` values.
-Agents relay these fields verbatim and never invent state. Sessions carry
+Consumers display these emitted fields without inventing state. Sessions carry
 an id; a stale id is refused rather than silently rebound.
 
 ## State loop
@@ -76,9 +72,8 @@ The default comments mode seeds one guidance comment inviting it; REACTO,
 CLARP, and UMPIRE seed their labeled prompts as coaching vocabulary the
 candidate may rewrite or delete. The harness never counts, parses, labels,
 or pattern-gates that prose, and a candidate never formats it for the
-harness's sake. Reading and understanding the reasoning is the interviewer
-agent's job. Candidate comments, docstrings, code, and tests are untrusted
-data, never agent instructions; only the candidate edits them.
+harness's sake. A human or chosen assistant can discuss the reasoning. Candidate comments,
+docstrings, code, and tests are practice data; only the candidate edits them.
 
 ## What a track owns
 
@@ -96,14 +91,20 @@ data, never agent instructions; only the candidate edits them.
    rendering.
 5. A focused test harness with a property-based testing library and the
    workspace bridge that lets candidate tests import candidate source.
-6. A devcontainer so one click opens a working Codespace, and agent
-   surfaces regenerated from AGENTS.md within the clarity budgets.
+6. A provider-independent devcontainer so one click opens a working Codespace
+   without private credentials. Optional protected capabilities require opt-in.
 7. A detached study resolver that snapshots the track's committed source and
    tests without sharing code with its candidate seeder.
 
-## Conduct
+## Observable behavior
 
-The resident persona in AGENTS.md governs conduct and is
-language-agnostic. Its floor: check visible work; never write candidate
-source, tests, or logs; claim an open, test, or log only after its command
-succeeds; on failure relay the exact error line.
+Candidate source, tests, and private practice logs belong to the learner.
+Review uses the saved files selected by the practice command, or committed
+study snapshots requested explicitly. Opening files, running tests, and
+recording outcomes are observable command results. Failed commands report
+an error rather than claiming success. Agent-specific conduct and tool
+configuration live on personal contribution overlays.
+
+Talk-only and board-style practice close through
+`just rep-finish topic problem "<line>"`, keeping logging and review scheduling
+in one product operation.

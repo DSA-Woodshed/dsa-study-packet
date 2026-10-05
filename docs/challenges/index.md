@@ -11,21 +11,16 @@ larger solve count.
 
 ## Start in the editor
 
-Start a comments-mode rep from Copilot Chat:
-
-```text
-/comments
-```
-
-No labels or prefixes are required. To select a problem, add its topic and name,
-such as `/comments graphs dijkstra`. The direct terminal equivalent is:
+Choose your activity through `just session`, or start a comments-mode rep:
 
 ```bash
+just practice-start comments
 just practice-start comments graphs dijkstra
 ```
 
-If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
-the same loop with optional labels.
+No labels or prefixes are required. The first command draws the next problem;
+the second selects an exact pair. Optional `reacto`, `clarp`, and `umpire`
+labels offer scaffolding for the same loop.
 
 To study a named problem before a rep, open read-only snapshots of its
 committed solution and reference tests:
@@ -38,7 +33,7 @@ Study creates no rep or log. When you are ready, run the exact `IMPLEMENT` or
 `TESTS_FIRST` transition it emits. Either one starts a fresh isolated candidate
 pair.
 
-Write your comments in the file, save, then use `/continue` or `just
+Write your comments in the file, save, then run `just
 practice-next` for one next instruction. Then implement and add cases in your
 test file.
 

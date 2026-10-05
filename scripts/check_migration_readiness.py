@@ -19,7 +19,7 @@ REPOSITORY_NAME = "dsa-study-packet"
 
 REPOSITORY_LINK_RE = re.compile(
     rf"https://(?:github\.com|codespaces\.new)/"
-    rf"(?P<owner>[A-Za-z0-9_.-]+)/{REPOSITORY_NAME}(?:\.git)?"
+    rf"(?P<owner>[A-Za-z0-9_.-]+)/{REPOSITORY_NAME}(?:\.git)?(?![A-Za-z0-9_.-])"
 )
 LEGACY_PAGES_RE = re.compile(
     rf"https?://(?:www\.)?[A-Za-z0-9_.-]+\.github\.io/{REPOSITORY_NAME}/?",

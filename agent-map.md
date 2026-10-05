@@ -1,53 +1,36 @@
-# dsa-study-packet Agent Map
+# Woodshed command map
 
-## Read Order
+This map describes the product interface for humans and optional assistants.
+Read `TRACK-CONTRACT.md`, `docs/guide/getting-started.md`, and
+`docs/guide/source-of-truth.md`. Personal provider directives live on the
+contribution fork, outside the organization product.
 
-1. `AGENTS.md`
-2. `TRACK-CONTRACT.md`
-3. `docs/guide/getting-started.md`
-4. `docs/guide/source-of-truth.md`
-5. `CLAUDE.md` (Claude overlay only, secondary to `AGENTS.md`)
+## Activity selection
 
-## Core Recipes
+`just session` guides time, study or practice, focus, feedback, and workspace.
+`just catalog "<words>"` resolves natural names to exact topic/problem pairs.
+
+## Practice commands
 
 - `just practice-start comments|reacto|clarp|umpire [topic problem]`
 - `just practice-next`
-- `just practice-test`
-- `just practice-watch`
-- `just practice-repl`
+- `just practice-test`, `just practice-watch`, `just practice-repl`
 - `just practice-open [topic problem]`
 - `just practice-study topic problem`
 - `just practice-start-tests topic problem`
 - `just practice-finish "<one fix>"`
 - `just interview [topic problem]`
 - `just rep-finish topic problem "<line>"`
-- `just catalog "<words>"`
-- `just packet`
-- `just docs`
-- `just pdf-all`
-- `just test`
-- `just lint`
-- `just doctor`
 
-## Machine Keys
+Study emits `IMPLEMENT` and `TESTS_FIRST` transitions for the selected pair.
+Commands report `STATE`, `SOURCE`, `TEST`, `NEXT`, `OPENED`, `OPEN_FAILED`,
+`REVISION`, and outcome fields. The practice contract defines the interface.
 
-`STATE`, `SOURCE`, `TEST`, `NEXT`, `START`, `QUEUE`, `QUERY`, `MATCH`,
-`CHOOSE`, `SUGGEST`, `OPENED`, `OPEN_FAILED`, `STUDY_SOURCE`, `STUDY_TEST`,
-`REVISION`, `IMPLEMENT`, `TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`,
-`LOGGED`, `SPACED`, `TESTS`. Catalog
-readiness (`READY`, `CHOOSE`, `NOT_FOUND`) travels
-as a `STATE` value.
+## Development
 
-## Skills
+`just setup`, `just check`, `just env-check`, `just doctor`, `just packet`,
+`just docs`, and `just pdf-all` cover environment, contribution gates, and
+publishing. The reading site consumes an exact packet revision.
 
-- `.claude/skills/interviewer/SKILL.md`: one practice rep
-- `.claude/skills/practice-day/SKILL.md`: a full day or multi-block session
-
-## Prohibited
-
-- Never write candidate source or tests; the candidate owns them.
-- Never read, score, or log private arrival writing. Read only command-emitted
-  candidate paths at save boundaries or study snapshots on explicit request.
-- `just` is the only front door; never invoke raw Bazel directly.
-- Never write employer names, interviewer notes, clearance facts, or
-  personal rep logs into tracked files.
+Candidate files and practice history are private and gitignored. Reference
+solutions are tracked. Employer-specific prep remains downstream.

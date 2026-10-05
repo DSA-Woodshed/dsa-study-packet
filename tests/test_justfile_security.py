@@ -93,9 +93,7 @@ def test_practice_arguments_reach_python_as_single_values(
 
 def test_authority_surfaces_use_one_non_editor_closeout() -> None:
     authority_paths = (
-        "AGENTS.md",
-        ".claude/skills/interviewer/SKILL.md",
-        ".claude/skills/practice-day/SKILL.md",
+        "TRACK-CONTRACT.md",
         "docs/guide/getting-started.md",
         "docs/guide/interview-practice-evidence.md",
         "docs/guide/source-of-truth.md",

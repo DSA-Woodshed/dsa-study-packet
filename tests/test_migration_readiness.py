@@ -142,3 +142,13 @@ def test_missing_canonical_edit_path_is_caught(tmp_path: Path) -> None:
     assert (
         "mkdocs.yml: missing canonical metadata `edit_uri: edit/main/docs/`"
     ) in check(tmp_path)
+
+
+def test_true_contribution_fork_url_is_not_a_product_owner_link(tmp_path: Path) -> None:
+    _mirror_contract(tmp_path)
+    path = tmp_path / "CONTRIBUTING.md"
+    path.write_text(
+        path.read_text()
+        + "\nhttps://github.com/Contributor/dsa-study-packet-contrib.git\n"
+    )
+    assert check(tmp_path) == []

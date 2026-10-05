@@ -1,15 +1,65 @@
 # dsa-study-packet: algorithm practice
 set dotenv-load := false
 
+hook_mirror := "https://raw.githubusercontent.com/DSA-Woodshed/.github/7e217e4817a61545a8564845b3f4b77a04e5b548/githooks"
+
 default:
     @just --list
+
+# Locked product dependencies; never loads optional agent tooling.
+deps-sync:
+    uv sync --extra dev --locked
+
+# Prepare a fork checkout and the locked product environment.
+setup: hooks-install deps-sync env-setup
+
+# Install the organization mirror while keeping the global hook layer chained.
+hooks-install:
+    git config core.hooksPath .githooks
+    git config remote.pushDefault origin
+    @if git remote | grep -qx upstream; then git remote set-url --push upstream DISABLED-fork-first; fi
+    @if [ "$(git config --get commit.gpgsign || true)" != true ]; then printf 'Configure signed commits before contributing; see CONTRIBUTING.md\n'; fi
+
+# Compare exact bytes with the organization mirror; a file:// fixture works offline.
+hooks-check mirror=hook_mirror:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    hook_fixture=$(mktemp -d)
+    trap 'rm -rf "$hook_fixture"' EXIT
+    for hook_name in _lib.sh pre-commit commit-msg pre-push test.sh; do
+        curl --fail --silent --show-error --location {{ quote(mirror) }}/"$hook_name" -o "$hook_fixture/$hook_name"
+        if ! cmp -s ".githooks/$hook_name" "$hook_fixture/$hook_name"; then
+            printf 'Hook drift: .githooks/%s differs from the organization mirror\n' "$hook_name" >&2
+            exit 1
+        fi
+    done
+    printf 'Shared hook mirror parity passed\n'
+
+hooks-test:
+    bash .githooks/test.sh
+
+# Maintainer gate, with one declared environment dependency through lint/test.
+check mirror=hook_mirror: (hooks-check mirror) hooks-test lint test
+
+# Public environment and explicitly selected protected capabilities.
+env-setup: deps-sync
+    .venv/bin/python scripts/environment.py setup
+
+env-check:
+    .venv/bin/python scripts/environment.py check
+
+protected-capability:
+    .venv/bin/python scripts/environment.py protected
+
+env-test: deps-sync
+    .venv/bin/python -m pytest -q tests/test_environment.py
 
 # ──────────────────────────────────────────────
 # Testing
 # ──────────────────────────────────────────────
 
 # Run all tests
-test *args:
+test *args: deps-sync
     uv run pytest {{ args }}
 
 # Run tests for a specific topic
@@ -45,12 +95,12 @@ cov *args:
 # ──────────────────────────────────────────────
 
 # Run ruff linter + mypy type checker + repo guards
-lint:
+lint: deps-sync
     uv run ruff check src/ tests/ scripts/
     uv run mypy
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
-    uv run python scripts/check_agent_instructions.py
+    uv run python scripts/check_contribution_boundary.py
     uv run python scripts/check_onboarding.py
     uv run python scripts/check_migration_readiness.py
     uv run python scripts/check_clarity.py
@@ -74,52 +124,14 @@ codespaces-acceptance-plan branch:
 codespaces-acceptance-verify expected_sha:
     uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }}
 
-# Regenerate agent instruction surfaces from the AGENTS.md persona region
-gen-agents:
-    uv run python scripts/gen_agent_instructions.py
-
 # Format code with ruff
-fmt:
-    uv run ruff format src/ tests/
-    uv run ruff check --fix src/ tests/
+fmt *paths="src/ tests/": deps-sync
+    uv run ruff format {{ paths }}
+    uv run ruff check --fix {{ paths }}
 
 # Check formatting without modifying files
-fmt-check:
-    uv run ruff format --check src/ tests/
-
-# ──────────────────────────────────────────────
-# Agent skills (standalone; not wired into lint)
-# ──────────────────────────────────────────────
-
-# List each .claude skill's frontmatter name and description
-skills-list:
-    @for s in .claude/skills/*/SKILL.md; do \
-      name=$(awk '/^name:/ {print $2; exit}' "$s"); \
-      desc=$(awk '/^description:/ {sub(/^description:[[:space:]]*/, ""); print; exit}' "$s"); \
-      printf "%-16s %s\n" "$name" "$desc" | cut -c1-200; \
-    done
-
-# Fail if any .claude skill is missing a name or description frontmatter field
-skills-validate:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    fail=0
-    for s in .claude/skills/*/SKILL.md; do
-        name=$(awk '/^name:/ {print $2; exit}' "$s")
-        desc=$(awk '/^description:/ {print $0; exit}' "$s")
-        if [ -z "$name" ]; then
-            printf 'FAIL %s: missing frontmatter name\n' "$s"
-            fail=1
-        fi
-        if [ -z "$desc" ]; then
-            printf 'FAIL %s: missing frontmatter description\n' "$s"
-            fail=1
-        fi
-    done
-    if [ "$fail" -ne 0 ]; then
-        exit 1
-    fi
-    echo "skills-validate passed"
+fmt-check *paths="src/ tests/": deps-sync
+    uv run ruff format --check {{ paths }}
 
 # ──────────────────────────────────────────────
 # Scaffolding

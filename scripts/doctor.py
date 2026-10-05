@@ -23,14 +23,6 @@ LOOP = (
     ("watchexec", "'just practice-watch'; test/repl loop works without it"),
     ("code", "opens candidate source + test tabs; paths print if absent"),
 )
-INTERVIEWERS = (
-    ("claude", "optional manual CLI; install and authenticate separately"),
-    ("codex", "optional manual CLI; install and authenticate separately"),
-    (
-        "gemini",
-        "npm i -g @google/gemini-cli; reads AGENTS.md via .gemini/settings.json",
-    ),
-)
 PUBLISHING = (
     ("pandoc", "'just pdf-all' reference-sheet PDFs (optional)"),
     ("tectonic", "'just packet' booklet PDF (optional)"),
@@ -78,19 +70,9 @@ def main() -> int:
     print()
     core_missing = report("Core", CORE)
     report("Practice loop", LOOP)
-    print("Interviewers")
     if os.environ.get("CODESPACES"):
         print("  codespace  ok   Codespaces environment detected")
-        print(
-            "  copilot    --   confirm Chat sign-in and entitlement in the VS Code UI"
-        )
-    else:
-        print(
-            "  copilot    --   install Chat, sign in, and confirm entitlement in VS Code"
-        )
-    for name, hint in INTERVIEWERS:
-        mark = "ok" if shutil.which(name) else "--"
-        print(f"  {name:<10} {mark:<4} {hint}")
+    print("Feedback: optional; choose tools on your personal contribution fork")
     report("Publishing (optional)", PUBLISHING)
     print()
     interpreter = pytest_interpreter()
@@ -104,8 +86,7 @@ def main() -> int:
         print(f"MISSING core tools: {', '.join(core_missing)}", file=sys.stderr)
         return 1
     print(
-        "Core toolchain ok. Start with /comments in Chat or "
-        "'just practice-start comments'."
+        "Core toolchain ok. Start with 'just session' or 'just practice-start comments'."
     )
     return 0
 
