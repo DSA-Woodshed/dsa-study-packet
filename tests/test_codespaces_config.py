@@ -155,8 +155,6 @@ def test_devcontainer_has_no_assistant_or_protected_identity_requirement() -> No
     assert not config.get("secrets")
     assert not config.get("mounts")
     assert "postAttachCommand" not in config
-    assert "--cap-drop=ALL" in config["runArgs"]
-    assert "--security-opt=no-new-privileges" in config["runArgs"]
 
 
 def test_devcontainer_does_not_inject_a_container_wide_node_preload() -> None:

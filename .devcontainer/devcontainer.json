@@ -7,7 +7,6 @@
 	"postStartCommand": "bash .devcontainer/setup.sh --ready",
 	"waitFor": "updateContentCommand",
 	"containerUser": "vscode",
-	"runArgs": ["--cap-drop=ALL", "--security-opt=no-new-privileges"],
 	"containerEnv": {
 		"UV_PYTHON_PREFERENCE": "only-managed",
 		"UV_PYTHON": "3.14.6"

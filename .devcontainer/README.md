@@ -10,10 +10,11 @@ These phases are safe for credential-free prebuilds. `postCreateCommand`
 prepares private practice storage; `postStartCommand` checks readiness without
 starting a practice session. Repeating setup preserves candidate work.
 
-The base image is pinned by digest. The container runs as `vscode`, drops all
-Linux capabilities and disallows privilege escalation. It mounts no host Docker
-socket, age key, signing key, or provider credential. Local development can use
-rootless Podman; Codespaces owns its own container runtime.
+The base image is pinned by digest, and practice commands run as `vscode`.
+The configuration mounts no host Docker socket, age key, signing key, or provider
+credential. Local development can use rootless Podman; Codespaces owns its own
+container runtime and platform setup. Runtime capability flags belong to a
+qualified local launch rather than the portable hosted configuration.
 
 After startup, run `just session` to choose how to use your time, or `just` to
 list commands. `just env-check` reports the installed public tools and practice
