@@ -403,7 +403,7 @@ def test_practice_open_recipe_forwards_exact_pairs_and_guides_partial_names(
     exact_output = exact.stdout + exact.stderr
     assert "topic='linked_lists'" in exact_output
     assert "problem='lru_cache'" in exact_output
-    assert 'practice_workspace.py open "$topic" "$problem"' in exact_output
+    assert 'session.py workspace open "$topic" "$problem"' in exact_output
 
     partial = subprocess.run(
         ["just", "practice-open", topic, problem],
@@ -428,7 +428,7 @@ def test_practice_study_requires_and_forwards_one_exact_pair() -> None:
     output = exact.stdout + exact.stderr
     assert "topic='linked_lists'" in output
     assert "problem='lru_cache'" in output
-    assert 'practice_workspace.py study "$topic" "$problem"' in output
+    assert 'session.py workspace study "$topic" "$problem"' in output
 
     missing = subprocess.run(
         ["just", "practice-study"],
@@ -465,7 +465,7 @@ def test_practice_start_tests_activates_exact_pair_with_test_focus() -> None:
 
     assert exact.returncode == 0, exact.stderr
     output = exact.stdout + exact.stderr
-    assert "practice_workspace.py start comments" in output
+    assert "session.py workspace start comments" in output
     assert "linked_lists" in output
     assert "lru_cache" in output
     assert "--focus test" in output
