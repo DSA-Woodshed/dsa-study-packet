@@ -31,6 +31,8 @@ def track(root: Path, relative: str, text: str = "local configuration\n") -> Non
         "AGENTS.md",
         "nested/AGENTS.md",
         ".claude/settings.json",
+        "examples/.claude/settings.json",
+        "examples/.github/copilot-instructions.md",
         ".agents/skills/example/SKILL.md",
         ".github/prompts/example.prompt.md",
         "docs/agent-notes/receipt.md",

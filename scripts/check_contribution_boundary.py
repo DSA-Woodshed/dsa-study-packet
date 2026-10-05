@@ -29,13 +29,14 @@ def check(root: Path) -> list[str]:
     failures = []
     for relative in filter(None, tracked):
         path = PurePosixPath(relative)
-        if path.name in PERSONAL_FILES or relative == ".github/copilot-instructions.md":
+        if path.name in PERSONAL_FILES or (
+            path.name == "copilot-instructions.md" and ".github" in path.parts
+        ):
             failures.append(
                 f"{relative}: personal agent directive belongs on the fork overlay"
             )
         elif any(
-            relative == directory or relative.startswith(f"{directory}/")
-            for directory in PERSONAL_DIRECTORIES
+            f"/{directory}/" in f"/{relative}/" for directory in PERSONAL_DIRECTORIES
         ):
             failures.append(
                 f"{relative}: personal agent tooling belongs on the fork overlay"
