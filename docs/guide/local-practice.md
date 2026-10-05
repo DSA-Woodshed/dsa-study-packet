@@ -11,7 +11,7 @@ Codespaces; a native install needs only `uv` and `just` for the core flow.
 ## Set up
 
 ```bash
-git clone https://github.com/Jesssullivan/dsa-study-packet.git
+git clone https://github.com/DSA-Woodshed/dsa-study-packet.git
 cd dsa-study-packet
 ```
 

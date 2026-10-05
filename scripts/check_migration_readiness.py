@@ -1,4 +1,4 @@
-"""Check repository-owned links and pre-transfer retirement invariants.
+"""Check repository-owned links and the packet Pages retirement boundary.
 
 The repository slug in ``tinyland.repo.json`` is the authority for mutable
 GitHub links.  This guard deliberately does not contain a future owner: a
@@ -57,8 +57,8 @@ ISSUE_TEMPLATE_SURFACES = (
 INTENTIONAL_FIXTURE_SURFACES = frozenset({"tests/test_migration_readiness.py"})
 
 PAGES_CONTINUITY_NOTICE = (
-    "The packet's legacy GitHub Pages setting still serves only a noindex redirect "
-    "to the production site during pre-transfer continuity"
+    "The packet's legacy GitHub Pages setting remains enabled pending "
+    "validated production-site cutover"
 )
 PAGES_WORKFLOW_MARKERS = (
     "actions/configure-pages",

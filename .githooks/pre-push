@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DSA Woodshed pre-push hook.
-# Refuses: a push to any DSA-Woodshed remote, unsigned commits and AI
+# Refuses: a push to DSA-Woodshed authority or its transferred aliases, unsigned commits and AI
 # attribution in the pushed range. Warns: branch name without a semantic prefix.
 # The pushed range is every commit not already on a remote-tracking ref.
 set -u
@@ -10,6 +10,13 @@ set -u
 
 remote_name="${1:-}"
 remote_url="${2:-}"
+
+# Transfers preserve the original personal URLs as redirects to org authority.
+# Match those exact product names; the actual -contrib forks remain writable.
+# The port alternative covers GitHub SSH URLs with an explicit port.
+woodshed_is_authority_remote() {
+  printf '%s\n' "$1" | grep -iqE 'github\.com([:/]+|:[0-9]+/)(DSA-Woodshed/|Jesssullivan/(dsa-study-packet|dsa-woodshed\.space)(\.git)?/?$)'
+}
 
 # True for the all-zero object name git uses for a missing ref, in either
 # object format (40 hex digits for SHA-1, 64 for SHA-256).
@@ -33,10 +40,10 @@ input="$(mktemp "${TMPDIR:-/tmp}/woodshed-pre-push.XXXXXX")"
 trap 'rm -f "$input"' EXIT
 cat > "$input"
 
-if printf '%s\n' "$remote_url" | grep -iqE 'github\.com[:/]+DSA-Woodshed/'; then
-  woodshed_refuse "push to the organization remote '$remote_name' ($remote_url); work lands only through a pull request from your fork" \
+if woodshed_is_authority_remote "$remote_url"; then
+  woodshed_refuse "push to organization authority '$remote_name' ($remote_url), including transferred redirects; work lands only through a pull request from your fork" \
     "Fork first" \
-    "git push origin HEAD && git config remote.pushDefault origin   # then open the pull request from your fork"
+    "git remote -v   # point origin at your actual personal fork, then git push origin HEAD and open its pull request"
   exit 1
 fi
 

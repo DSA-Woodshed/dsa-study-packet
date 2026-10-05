@@ -175,12 +175,48 @@ fi
 sha="$(git rev-parse HEAD)"
 null="$(printf '%0*d' "${#sha}" 0)"
 for url in git@github.com:DSA-Woodshed/meta.git https://github.com/DSA-Woodshed/meta.git \
-  ssh://git@github.com/dsa-woodshed/meta.git; do
+  ssh://git@github.com/dsa-woodshed/meta.git ssh://git@github.com:443/DSA-Woodshed/meta.git; do
   check "synthetic push to $url refused" 1 --refused -- \
     bash -c "printf 'refs/heads/feat/ok %s refs/heads/feat/ok %s\n' '$sha' '$null' | '$hooks/pre-push' upstream '$url'"
 done
 check "synthetic push to a fork URL passes" 0 --quiet -- \
   bash -c "printf 'refs/heads/feat/ok %s refs/heads/feat/ok %s\n' '$sha' '$null' | '$hooks/pre-push' origin git@github.com:someone/meta.git"
+
+# Real pushes exercise transferred personal locations and the genuine forks.
+# Local bare repositories model the URL paths without contacting GitHub.
+mkdir -p "$work/github.com/Jesssullivan"
+for product in dsa-study-packet dsa-woodshed.space; do
+  transferred="$work/github.com/Jesssullivan/$product.git"
+  contribution="$work/github.com/Jesssullivan/$product-contrib.git"
+  git init -q --bare "$transferred"
+  git init -q --bare "$contribution"
+  git remote add "transferred-$product" "file://$transferred"
+  git remote add "contribution-$product" "file://$contribution"
+  check "real push to transferred $product alias refused" 1 --refused -- \
+    git push -q "transferred-$product" feat/ok
+  check "refused transferred $product remains untouched" 0 --quiet -- \
+    test -z "$(git --git-dir="$transferred" for-each-ref --format='%(refname)')"
+  check "real push to personal $product-contrib fork passes" 0 --quiet -- \
+    git push -q "contribution-$product" feat/ok
+
+  for url in "git@github.com:Jesssullivan/$product.git" \
+    "https://github.com/Jesssullivan/$product" \
+    "https://github.com/jesssullivan/$product.git/" \
+    "ssh://git@github.com/Jesssullivan/$product.git" \
+    "ssh://git@github.com:443/Jesssullivan/$product.git"; do
+    check "synthetic push to transferred $url refused" 1 --refused -- \
+      bash -c "printf 'refs/heads/feat/ok %s refs/heads/feat/ok %s\n' '$sha' '$null' | '$hooks/pre-push' origin '$url'"
+  done
+  for url in "git@github.com:Jesssullivan/$product-contrib.git" \
+    "https://github.com/Jesssullivan/$product-contrib" \
+    "ssh://git@github.com:443/Jesssullivan/$product-contrib.git"; do
+    check "synthetic push to real $url fork passes" 0 --quiet -- \
+      bash -c "printf 'refs/heads/feat/ok %s refs/heads/feat/ok %s\n' '$sha' '$null' | '$hooks/pre-push' origin '$url'"
+  done
+done
+
+check "similarly named personal repo is not a transferred alias" 0 --quiet -- \
+  bash -c "printf 'refs/heads/feat/ok %s refs/heads/feat/ok %s\n' '$sha' '$null' | '$hooks/pre-push' origin https://github.com/Jesssullivan/dsa-study-packet-notes.git"
 
 git switch -q -c wip/x "$base"
 commit -m "feat: signed work on a loose branch"

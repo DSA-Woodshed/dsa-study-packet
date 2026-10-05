@@ -101,6 +101,8 @@ readiness and protected SSO admission are optional, separately selected
 capabilities. Basic hosted acceptance selects no provider and needs no private
 repository credential. Never copy credentials into acceptance evidence.
 
-Maintainers publish CalVer release tags (`vYYYY.M.PATCH`) through the existing
-release workflow. Assets remain inventoried on
-[GitHub Releases](https://github.com/Jesssullivan/dsa-study-packet/releases).
+Maintainers publish packet releases only from the authoritative org repository.
+Bazel module releases use semantic tags matching `MODULE.bazel` (such as
+`v0.2.0`); existing CalVer releases retain their history. The release workflow
+builds the public graph. Assets remain inventoried on
+[GitHub Releases](https://github.com/DSA-Woodshed/dsa-study-packet/releases).

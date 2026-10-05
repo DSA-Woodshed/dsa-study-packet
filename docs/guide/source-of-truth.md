@@ -40,11 +40,10 @@ before it prerenders
 [dsa-woodshed.space](https://dsa-woodshed.space). This repository owns the
 content; the site repository owns the shell, navigation, and rendering. The
 local `site/` output is a development artifact, not the production deployment.
-The packet's legacy GitHub Pages setting still serves only a noindex redirect
-to the production site during pre-transfer continuity. No main-branch workflow
-deploys packet Pages. Disable the legacy setting only at the separately approved
-cutover, and retain its `gh-pages` ref until the separate post-soak deletion
-approval. Never restore it as a second reading surface.
+The packet's legacy GitHub Pages setting remains enabled pending validated
+production-site cutover. No main-branch workflow deploys packet Pages. After
+production TLS and served revisions are verified, retire the legacy setting
+and its preserved `gh-pages` branch. Never restore a second reading surface.
 
 ## Three Layers
 

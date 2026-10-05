@@ -1,8 +1,8 @@
 site_name: The DSA Woodshed
 site_url: https://dsa-woodshed.space/
 site_description: Calm editor-first interview practice with natural reasoning comments, candidate-owned code, focused tests, and printable references
-repo_url: https://github.com/Jesssullivan/dsa-study-packet
-repo_name: Jesssullivan/dsa-study-packet
+repo_url: https://github.com/DSA-Woodshed/dsa-study-packet
+repo_name: DSA-Woodshed/dsa-study-packet
 edit_uri: edit/main/docs/
 
 theme:

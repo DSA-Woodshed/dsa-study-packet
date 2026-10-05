@@ -42,7 +42,12 @@ official versioned bundle URL. Then record that cache using
 lock through an offline bundle compile and a detached archive consumer before
 publishing. Never silently fall back to an unpinned network bundle.
 
-A detached consumer supplies the same immutable registry URL from `.bazelrc`
-and declares `bazel_dep(name = "dsa_study_packet", version = "0.1.0")`.
+A detached consumer pins the public registry revision containing packet 0.2.0
+and declares `bazel_dep(name = "dsa_study_packet", version = "0.2.0")`.
 Building `@dsa_study_packet//:booklet` needs only the published source archive
 and declared public toolchain/resource downloads.
+
+Packet module 0.2.0 repairs the missing generated-source input in 0.1.0.
+Existing published versions remain immutable; the broken version is yanked
+with its failure reason. The source repository registry pin supplies its
+toolchains and need not contain its own subsequently published module.

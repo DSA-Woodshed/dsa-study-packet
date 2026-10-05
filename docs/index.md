@@ -15,7 +15,7 @@ comments, implement a solution, write focused tests, and keep one correction.
 
     Open Codespaces and begin an editor rep.
 
-    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1)
 
 -   :material-code-braces:{ .lg .middle } **Practice Problems**
 

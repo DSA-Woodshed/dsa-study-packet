@@ -26,7 +26,7 @@ opens a committed solution first. Practice work is never committed.
 
 ## 1. Start a rep
 
-[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
+[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
 
 Use the guided session or start a comments-mode rep directly:
 

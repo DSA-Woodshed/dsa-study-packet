@@ -15,7 +15,7 @@ acceptance evidence.
 
 ## Start in Codespaces
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1)
 
 When the editor opens, choose an activity from the terminal. Basic practice
 needs no private credentials. Start a guided session to choose time, activity,

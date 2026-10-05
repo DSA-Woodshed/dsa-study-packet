@@ -1,7 +1,10 @@
 # dsa-study-packet: algorithm practice
 set dotenv-load := false
 
-hook_mirror := "https://raw.githubusercontent.com/DSA-Woodshed/.github/7e217e4817a61545a8564845b3f4b77a04e5b548/githooks"
+bazel := env_var_or_default("BAZEL_BIN", "bazelisk")
+export USE_BAZEL_VERSION := `cat .bazelversion`
+
+hook_mirror := "https://raw.githubusercontent.com/DSA-Woodshed/.github/83f555ca5cb0ee01fa35cb6947f1b0e80228d332/githooks"
 
 default:
     @just --list
@@ -39,7 +42,7 @@ hooks-test:
     bash .githooks/test.sh
 
 # Maintainer gate, with one declared environment dependency through lint/test.
-check mirror=hook_mirror: (hooks-check mirror) hooks-test lint test
+check mirror=hook_mirror: (hooks-check mirror) hooks-test maintainer-check source-contracts integration-test
 
 # Public environment and explicitly selected protected capabilities.
 env-setup: deps-sync
@@ -94,10 +97,22 @@ cov *args:
 # Code quality
 # ──────────────────────────────────────────────
 
-# Run ruff linter + mypy type checker + repo guards
-lint: deps-sync
-    uv run ruff check src/ tests/ scripts/
-    uv run mypy
+# Maintainer lint uses the same graph as the full gate.
+maintainer-lint:
+    {{ quote(bazel) }} test //tools:lint //tools:typecheck
+
+lint: maintainer-lint source-contracts
+
+# The public maintained graph: unit tests, Ruff and mypy.
+maintainer-check:
+    {{ quote(bazel) }} test //tools:check
+
+# Git/editor/container/command integration tests share one explicit lane list.
+integration-test: deps-sync
+    uv run python tools/run_integration.py
+
+# Source contracts need tracked checkout facts; they do not rerun unit tests.
+source-contracts: deps-sync
     uv run python scripts/check_public_boundary.py
     uv run python scripts/check_doc_counts.py
     uv run python scripts/check_contribution_boundary.py
@@ -228,84 +243,62 @@ pdf-all:
     done
     echo "Done. PDFs in reference-sheets/pdf/"
 
-# Generate printable PDF booklet (decision trees + 1 algo per page)
-pdf-booklet:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Generating booklet.tex..."
-    uv run python scripts/gen_booklet.py
-    echo "Compiling booklet.pdf with tectonic..."
-    tectonic booklet.tex
+# Generate and compile the public packet from declared inputs.
+packet:
+    {{ quote(bazel) }} build //:booklet
     mkdir -p docs/assets
-    cp booklet.pdf docs/assets/booklet.pdf
-    echo "Done -> booklet.pdf and docs/assets/booklet.pdf"
+    cp bazel-bin/booklet.pdf booklet.pdf
+    cp bazel-bin/booklet.pdf docs/assets/booklet.pdf
 
-# Build the latest printable study packet from source code and notes
-packet: pdf-booklet
+# Compatibility name routes to the sole booklet graph.
+pdf-booklet: packet
 
-# --------------------------------------------------
-# GloriousFlywheel cache-first Bazel (sole entrypoint)
-# --------------------------------------------------
-# `import? "justfile.flywheel"` (added by `flywheel-frontdoor-kit --patch-justfile`)
-# provides flywheel-doctor/verify/enroll/consumer-env + the gloriousflywheel-bazel
-# wrapper recipes. The recipes below are the repo-local cache-first front door:
-# they delegate to the wrapper when BAZEL_REMOTE_CACHE is attached and degrade to
-# a local disk_cache build otherwise. Never call raw bazel -- always `just remote-*`.
-
-_remote-prepare:
-    @echo "Generating booklet.tex..."
-    @uv run python scripts/gen_booklet.py
-
-# Cache-first compile of a target set (default //:booklet, the neutral packet).
-remote-compile *targets: _remote-prepare
+# Explicitly selected remote capability. Missing attachment is unavailable.
+remote-compile *targets:
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
-    targets="{{ targets }}"; [ -n "$targets" ] || targets="//:booklet"
-    if [ -n "${BAZEL_REMOTE_CACHE:-}" ]; then
-        exec just flywheel-build $targets
+    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
+        echo "Remote build unavailable: select a protected cache capability first. Use just packet for a public local build." >&2
+        exit 78
     fi
-    echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local disk_cache build: $targets"
-    exec "${BAZEL_BIN:-bazelisk}" build $targets
+    targets={{ quote(targets) }}; [ -n "$targets" ] || targets="//:booklet"
+    exec just flywheel-build $targets
 
-# Cache-first build (default //:booklet).
 remote-build *targets:
     #!/usr/bin/env bash
     set -euo pipefail
-    targets="{{ targets }}"
-    exec just remote-compile $targets
+    exec just remote-compile {{ quote(targets) }}
 
-# Cache-first bazel test (default //...). `just test` runs the real uv/pytest suite.
-remote-test *targets: _remote-prepare
+remote-test *targets:
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
-    targets="{{ targets }}"; [ -n "$targets" ] || targets="//..."
-    if [ -n "${BAZEL_REMOTE_CACHE:-}" ]; then
-        exec just flywheel-test $targets
+    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
+        echo "Remote tests unavailable: select a protected cache capability first. Use just maintainer-check for public local validation." >&2
+        exit 78
     fi
-    echo "compatibility-local-only (BAZEL_REMOTE_CACHE unset) -> local bazel test: $targets"
-    exec "${BAZEL_BIN:-bazelisk}" test $targets
+    targets={{ quote(targets) }}; [ -n "$targets" ] || targets="//tools:check"
+    exec just flywheel-test $targets
 
-# GloriousFlywheel attachment/contract gate (no build). Exits 0 when unattached.
 remote-check:
     #!/usr/bin/env bash
     set -euo pipefail
     set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
     if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
-        echo "compatibility-local-only: BAZEL_REMOTE_CACHE unset; nothing to verify (ok)."
-        exit 0
+        echo "Remote capability unavailable: no cache attachment selected." >&2
+        exit 78
     fi
     just flywheel-doctor
     just flywheel-verify
 
 # Build the overlay-pattern demo (examples/overlay-demo) -> wrapped PDF
-# Cache-first via remote-build (no raw bazel); its front door prepares booklet.tex.
+# Its source is generated in the same declared public graph.
 overlay-demo:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Composing overlay demo via the cache-first front door..."
-    just remote-build //examples/overlay-demo:study_packet_example
+    {{ quote(bazel) }} build //examples/overlay-demo:study_packet_example
     echo "-> bazel-bin/examples/overlay-demo/study_packet_example.pdf"
 
 # ──────────────────────────────────────────────
