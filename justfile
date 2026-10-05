@@ -330,7 +330,7 @@ docs-build: traces
 
 # Mark a challenge as completed
 challenge-done topic problem:
-    @uv run python scripts/practice_workspace.py complete {{ quote(topic) }} {{ quote(problem) }}
+    @uv run python scripts/session.py workspace complete {{ quote(topic) }} {{ quote(problem) }}
 
 # Show challenge progress
 challenge-progress:
@@ -350,13 +350,21 @@ catalog query="":
     fi
     exec uv run python scripts/catalog.py "$query"
 
+# Machine-readable capabilities derived from the packet sources.
+capabilities:
+    @uv run python scripts/catalog.py --json
+
+# Choose intent and time interactively, or start/resume/finish one exact activity.
+[positional-arguments]
+session *args:
+    @uv run python scripts/session.py "$@"
+
 # Print one sheet-11 practice day as a timed block.
 practice-day day="12":
     @uv run python scripts/practice_day.py {{ quote(day) }}
 
-# Tonight's productionized Day 12 block.
-study-tonight:
-    @uv run python scripts/practice_day.py 12
+# Compatibility alias for an explicitly selected Day 12 block.
+study-tonight: (practice-day "12")
 
 # Preflight: check the practice toolchain and optional editor/agent helpers.
 doctor:
@@ -378,13 +386,13 @@ practice-start paradigm topic="" problem="":
         exit 2
     fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        exec uv run python scripts/practice_workspace.py start "$paradigm"
+        exec uv run python scripts/session.py workspace start "$paradigm"
     fi
-    exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem"
+    exec uv run python scripts/session.py workspace start "$paradigm" "$topic" "$problem"
 
 # Start a normal comments rep with the candidate test tab focused.
 practice-start-tests topic problem:
-    @uv run python scripts/practice_workspace.py start comments {{ quote(topic) }} {{ quote(problem) }} --focus test
+    @uv run python scripts/session.py workspace start comments {{ quote(topic) }} {{ quote(problem) }} --focus test
 
 # Start a fresh rep and archive any current workspace.
 practice-new paradigm topic="" problem="":
@@ -401,29 +409,29 @@ practice-new paradigm topic="" problem="":
         exit 2
     fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        exec uv run python scripts/practice_workspace.py start "$paradigm" --fresh
+        exec uv run python scripts/session.py workspace start "$paradigm" --fresh
     fi
-    exec uv run python scripts/practice_workspace.py start "$paradigm" "$topic" "$problem" --fresh
+    exec uv run python scripts/session.py workspace start "$paradigm" "$topic" "$problem" --fresh
 
 # Show target, candidate-test, and focused-test receipt status for the current rep.
 practice-status:
-    @uv run python scripts/practice_workspace.py status
+    @uv run python scripts/session.py workspace status
 
 # Print one machine-readable state and one next action for the current rep.
 practice-next:
-    @uv run python scripts/practice_workspace.py next
+    @uv run python scripts/session.py workspace next
 
 # Run only the current problem's reference tests plus candidate-owned tests.
 practice-test:
-    @uv run python scripts/practice_workspace.py test
+    @uv run python scripts/session.py workspace test
 
 # Re-run the current rep's focused tests whenever its workspace changes.
 practice-watch:
-    @uv run python scripts/practice_workspace.py watch
+    @uv run python scripts/session.py workspace watch
 
 # Load the current candidate implementation in an interactive Python prompt.
 practice-repl:
-    @uv run python scripts/practice_workspace.py repl
+    @uv run python scripts/session.py workspace repl
 
 # Open current candidate tabs, or prepare and open one exact safe pair.
 practice-open topic="" problem="":
@@ -439,9 +447,9 @@ practice-open topic="" problem="":
         exit 2
     fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        exec uv run python scripts/practice_workspace.py open
+        exec uv run python scripts/session.py workspace open
     fi
-    exec uv run python scripts/practice_workspace.py open "$topic" "$problem"
+    exec uv run python scripts/session.py workspace open "$topic" "$problem"
 
 # Open immutable committed source and test snapshots without starting a rep.
 practice-study topic="" problem="":
@@ -461,15 +469,15 @@ practice-study topic="" problem="":
         printf 'NEXT: just catalog\n'
         exit 2
     fi
-    exec uv run python scripts/practice_workspace.py study "$topic" "$problem"
+    exec uv run python scripts/session.py workspace study "$topic" "$problem"
 
-# Print the current rep metadata (agent/tooling interface).
+# Print the current workspace metadata for public integrations.
 practice-current:
-    @uv run python scripts/practice_workspace.py current
+    @uv run python scripts/session.py workspace current
 
 # Pair the private rep note and spaced-review update for the current workspace.
 practice-finish note:
-    @uv run python scripts/practice_workspace.py finish {{ quote(note) }}
+    @uv run python scripts/session.py workspace finish {{ quote(note) }}
 
 # Open safe candidate tabs, then print a cold statement. Omit both values to draw.
 practice-present topic="" problem="":
@@ -485,9 +493,9 @@ practice-present topic="" problem="":
         exit 2
     fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        exec uv run python scripts/practice_workspace.py present
+        exec uv run python scripts/session.py workspace present
     fi
-    exec uv run python scripts/practice_workspace.py present "$topic" "$problem"
+    exec uv run python scripts/session.py workspace present "$topic" "$problem"
 
 # Print the current or explicitly selected committed reference implementation.
 practice-reference topic="" problem="":
@@ -503,33 +511,31 @@ practice-reference topic="" problem="":
         exit 2
     fi
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        exec uv run python scripts/practice_workspace.py reference
+        exec uv run python scripts/session.py workspace reference
     fi
-    exec uv run python scripts/practice_workspace.py reference "$topic" "$problem"
+    exec uv run python scripts/session.py workspace reference "$topic" "$problem"
 
-# Board/talk entry point: prepare/open safe candidate files, then present cold.
+# Board/talk compatibility entry point through the public session dispatcher.
 interview topic="" problem="":
     #!/usr/bin/env bash
     set -euo pipefail
     topic={{ quote(topic) }}
     problem={{ quote(problem) }}
     if [ -z "$topic" ] && [ -z "$problem" ]; then
-        just practice-present
-    else
-        just practice-present "$topic" "$problem"
+        exec uv run python scripts/session.py workspace present
     fi
-    echo "Interview (cold): reason out loud first; the safe candidate tabs stay visible."
+    exec uv run python scripts/session.py workspace present "$topic" "$problem"
 
 # Compatibility entry point: plain comment-driven isolated editor rep.
 interview-comment topic problem:
-    @just practice-start comments {{ quote(topic) }} {{ quote(problem) }}
+    @uv run python scripts/session.py workspace start comments {{ quote(topic) }} {{ quote(problem) }}
 
 # Log one practice rep (appends to gitignored .challenges/reps.md)
 rep line:
-    @uv run python scripts/practice_workspace.py log {{ quote(line) }}
+    @uv run python scripts/session.py workspace log {{ quote(line) }}
 
 # Atomically log and schedule one non-editor rep.
 rep-finish topic problem line:
-    @uv run python scripts/practice_workspace.py finish-non-editor {{ quote(topic) }} {{ quote(problem) }} {{ quote(line) }}
+    @uv run python scripts/session.py workspace finish-non-editor {{ quote(topic) }} {{ quote(problem) }} {{ quote(line) }}
 
 import? "justfile.flywheel"

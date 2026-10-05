@@ -2519,12 +2519,12 @@ def _print_start(
         if focus == "test":
             print(
                 "NEXT: Continue in the candidate test tab. After an explicit "
-                "save, run /continue."
+                "save, run just practice-next."
             )
         else:
             print(
                 "NEXT: Continue in the open candidate files. After an explicit "
-                "save, run /continue."
+                "save, run just practice-next."
             )
         return
     if focus == "test":
@@ -2533,7 +2533,7 @@ def _print_start(
         print("STATE: THINK")
         print(
             "NEXT: Start in TEST with one focused candidate test. Save, then "
-            "run /continue; do not implement yet."
+            "run just practice-next; do not implement yet."
         )
         return
     show_next(root, metadata)
@@ -3170,25 +3170,25 @@ def _next_source_native_step(
     if _candidate_source_syntax(source) is not None:
         return (
             "BUILD",
-            "Fix the syntax error in your source file, save, then run /continue.",
+            "Fix the syntax error in your source file, save, then run just practice-next.",
         )
     target = str(metadata["target"])
     if _target_definition(source, target) is None:
         return (
             "BUILD",
-            f"Restore the required `{target}` definition, save, then run /continue.",
+            f"Restore the required `{target}` definition, save, then run just practice-next.",
         )
     if not _target_is_started(source, target):
         return (
             "THINK",
             "Work through the problem in ordinary source comments or a docstring. "
-            "When your plan is clear, implement it, save, then run /continue.",
+            "When your plan is clear, implement it, save, then run just practice-next.",
         )
     if not _target_is_implemented(source, target):
         return (
             "BUILD",
             "Continue the implementation until the selected target has no cold "
-            "stubs, save, then run /continue.",
+            "stubs, save, then run just practice-next.",
         )
 
     # A fresh receipt is runtime proof that pytest collected the candidate's
@@ -3219,7 +3219,7 @@ def _next_source_native_step(
     except PracticeError:
         return (
             "BUILD",
-            "Fix the syntax error in your test file, save, then run /continue.",
+            "Fix the syntax error in your test file, save, then run just practice-next.",
         )
     if candidate_test_count == 0:
         return (
@@ -3346,10 +3346,9 @@ def _print_closed(paradigm: str, key: str, test_outcome: str | None = None) -> N
 
 
 def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
-    """Log one rep and schedule its next review through one idempotent command."""
+    """Close one rep using its existing receipt, without implicitly running tests."""
     supplied_id = metadata.get("session_id") if isinstance(metadata, dict) else None
     normalized_note = _normalized_note(note)
-    test_run: TestRun | None = None
     with _practice_lock(root):
         current = _read_metadata(root, migrate_legacy=True)
         if supplied_id != current["session_id"]:
@@ -3371,71 +3370,18 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
             raise PracticeError(
                 f"finish note does not form a valid rep log: {exc}"
             ) from exc
-
-        source = (root / str(current["source"])).read_text()
-        state, _ = _next_source_native_step(root, current, source)
+        state, _ = next_step(root, current)
         receipt_status = _test_receipt_status(root, current)
         if state == "CLOSE":
-            before = _prepare_test_run(root, current, require_unlocked=True)
+            inputs = _prepare_test_run(root, current, require_unlocked=True)
+            test_outcome = "passed"
         else:
-            before = _test_input_digests(root, current)
-    if state == "CLOSE":
-        test_run = _execute_test_run(root, current, before)
-        after = test_run.after
-        test_outcome = "passed" if test_run.returncode == 0 else "failed"
-    else:
-        after = dict(before)
-        test_outcome = (
-            receipt_status if receipt_status in {"failed", "timeout"} else "not_run"
-        )
-
-    with _practice_lock(root):
-        if test_run is not None:
-            _restore_plugin_for_same_session(root, current)
-        current = _read_metadata(root, migrate_legacy=True)
-        if supplied_id != current["session_id"]:
-            raise PracticeError(
-                "stale rep session; reload `just practice-current` before closing"
+            inputs = _test_input_digests(root, current)
+            test_outcome = (
+                receipt_status if receipt_status in {"failed", "timeout"} else "not_run"
             )
-        topic = str(current["topic"])
-        problem = str(current["problem"])
-        paradigm = str(current["paradigm"])
-        key = f"{topic}/{problem}"
-        if "finished_at" in current:
-            _print_closed(paradigm, key, str(current["test_outcome"]))
-            return 0
-        if before != after:
-            raise PracticeError(
-                "test inputs changed while pytest was running; retry before closing"
-            )
-        if _test_input_digests(root, current) != after:
-            raise PracticeError("practice files changed while closing; retry")
-        if (
-            test_run is not None
-            and not test_run.timed_out
-            and not test_run.completed
-        ):
-            raise PracticeError(
-                "focused tests ended before pytest completed; the rep remains open"
-            )
-        if test_run is not None:
-            outcome = (
-                "timeout"
-                if test_run.timed_out
-                else ("passed" if test_run.returncode == 0 else "failed")
-            )
-            _write_test_receipt(root, current, outcome, after)
-        if test_run is not None and test_run.timed_out:
-            raise PracticeError(
-                f"focused tests exceeded {_test_timeout_seconds()} seconds; "
-                "the rep remains open"
-            )
-        if test_run is not None and test_run.returncode != 0:
-            raise PracticeError("focused tests failed; the rep remains open")
-        final_state, _ = next_step(root, current)
-        if final_state != state:
-            raise PracticeError("practice state changed while closing; retry")
-
+        if _test_input_digests(root, current) != inputs or next_step(root, current)[0] != state:
+            raise PracticeError("practice inputs changed while closing; retry")
         today = date.today().isoformat()
         reps = _state_file(root, "reps.md")
         progress = _state_file(root, "progress.md")
@@ -3446,8 +3392,8 @@ def finish_session(root: Path, metadata: dict[str, Any], note: str) -> int:
                 "finish_note": normalized_note,
                 "finish_state": state,
                 "test_outcome": test_outcome,
-                "test_inputs_before": before,
-                "test_inputs_after": after,
+                "test_inputs_before": inputs,
+                "test_inputs_after": inputs,
             }
         )
         files = {
@@ -4255,40 +4201,42 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
-    args = _parser().parse_args()
+def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
+    """Run the workspace engine for its CLI or the public session dispatcher."""
+    args = _parser().parse_args(argv)
+    root = ROOT if root is None else root
     try:
         if args.command == "study":
-            manifest = prepare_study_snapshot(ROOT, args.topic, args.problem)
-            return 0 if open_study_snapshot(ROOT, manifest) else 1
+            manifest = prepare_study_snapshot(root, args.topic, args.problem)
+            return 0 if open_study_snapshot(root, manifest) else 1
         if args.command == "present":
-            with _practice_lock(ROOT):
-                metadata = prepare_open_target(ROOT, args.topic, args.problem)
-                metadata = mark_presentation_started(ROOT, metadata)
+            with _practice_lock(root):
+                metadata = prepare_open_target(root, args.topic, args.problem)
+                metadata = mark_presentation_started(root, metadata)
                 topic = str(metadata["topic"])
                 problem = str(metadata["problem"])
                 if not os.environ.get("PRACTICE_NO_OPEN") and not open_session(
-                    ROOT, metadata
+                    root, metadata
                 ):
                     return 1
-            print(present_problem(ROOT, topic, problem).rstrip())
+            print(present_problem(root, topic, problem).rstrip())
             print()
             print(f"PRACTICE: {topic}/{problem}")
             print("NEXT: Ask the candidate to restate the problem and clarify it.")
             return 0
         if args.command == "reference":
             if args.topic is None and args.problem is None:
-                current = current_metadata(ROOT)
+                current = current_metadata(root)
                 topic = str(current["topic"])
                 problem = str(current["problem"])
             else:
-                topic, problem = select_problem(ROOT, args.topic, args.problem)
-            print(reference_solution(ROOT, topic, problem).rstrip())
+                topic, problem = select_problem(root, args.topic, args.problem)
+            print(reference_solution(root, topic, problem).rstrip())
             return 0
         if args.command == "start":
-            with _practice_lock(ROOT):
+            with _practice_lock(root):
                 metadata, action, archived = prepare_session(
-                    ROOT,
+                    root,
                     args.paradigm,
                     args.topic,
                     args.problem,
@@ -4297,32 +4245,32 @@ def main() -> int:
                 opened = True
                 if not args.no_open and not os.environ.get("PRACTICE_NO_OPEN"):
                     opened = (
-                        open_session(ROOT, metadata)
+                        open_session(root, metadata)
                         if args.focus == "source"
-                        else open_session(ROOT, metadata, focus="test")
+                        else open_session(root, metadata, focus="test")
                     )
                 if not opened:
                     return 1
                 if args.focus == "source":
-                    _print_start(ROOT, metadata, action, archived)
+                    _print_start(root, metadata, action, archived)
                 else:
-                    _print_start(ROOT, metadata, action, archived, focus="test")
+                    _print_start(root, metadata, action, archived, focus="test")
             return 0
         if args.command == "log":
-            return log_rep(ROOT, args.line)
+            return log_rep(root, args.line)
         if args.command == "complete":
-            return complete_problem(ROOT, args.topic, args.problem)
+            return complete_problem(root, args.topic, args.problem)
         if args.command == "finish-non-editor":
-            return finish_non_editor(ROOT, args.topic, args.problem, args.line)
+            return finish_non_editor(root, args.topic, args.problem, args.line)
         if args.command == "open":
-            with _practice_lock(ROOT):
+            with _practice_lock(root):
                 if args.topic is not None or args.problem is not None:
-                    metadata = prepare_open_target(ROOT, args.topic, args.problem)
+                    metadata = prepare_open_target(root, args.topic, args.problem)
                 else:
-                    metadata = _read_metadata(ROOT, migrate_legacy=True)
-                return 0 if open_session(ROOT, metadata) else 1
+                    metadata = _read_metadata(root, migrate_legacy=True)
+                return 0 if open_session(root, metadata) else 1
 
-        metadata = current_metadata(ROOT)
+        metadata = current_metadata(root)
         if _is_prepared(metadata) and args.command not in {"open", "current"}:
             raise PracticeError(
                 "candidate tabs are prepared, but no editor rep is active\n"
@@ -4333,20 +4281,20 @@ def main() -> int:
                 "NEXT: run one emitted transition when ready, or keep talking."
             )
         if args.command == "next":
-            return show_next(ROOT, metadata)
+            return show_next(root, metadata)
         if args.command == "status":
-            return show_status(ROOT, metadata)
+            return show_status(root, metadata)
         if args.command == "test":
-            return run_tests(ROOT, metadata)
+            return run_tests(root, metadata)
         if args.command == "watch":
-            return run_watch(ROOT, metadata)
+            return run_watch(root, metadata)
         if args.command == "repl":
-            return run_repl(ROOT, metadata)
+            return run_repl(root, metadata)
         if args.command == "current":
             print(json.dumps(metadata, indent=2))
             return 0
         if args.command == "finish":
-            return finish_session(ROOT, metadata, args.note)
+            return finish_session(root, metadata, args.note)
     except PracticeError as exc:
         print(f"practice: {exc}", file=sys.stderr)
         return 2

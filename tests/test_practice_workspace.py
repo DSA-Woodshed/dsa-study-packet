@@ -2531,40 +2531,22 @@ def test_finish_pairs_rep_log_and_spaced_update_idempotently(
     assert progress[0].startswith("- [x] arrays/first ")
 
 
-def test_status_remains_available_while_finish_runs_candidate_tests(
+def test_finish_reuses_the_completed_receipt_without_running_tests(
     practice_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
     _complete_session(practice_repo, metadata)
-    started = Event()
-    release = Event()
+    receipt = practice._test_receipt_path(practice_repo).read_text()
 
-    def slow_pytest(
-        root: Path, current: dict[str, Any], before: dict[str, str]
-    ) -> practice.TestRun:
-        started.set()
-        assert release.wait(timeout=5)
-        return practice.TestRun(
-            returncode=0,
-            before=before,
-            after=practice._test_input_digests(root, current),
-            completed=True,
-        )
+    def unexpected_pytest(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("closeout must not implicitly rerun candidate tests")
 
-    monkeypatch.setattr(practice, "_execute_test_run", slow_pytest)
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        closing = pool.submit(
-            practice.finish_session, practice_repo, metadata, "trace the edge"
-        )
-        assert started.wait(timeout=2)
-        reading = pool.submit(practice.current_metadata, practice_repo)
-        try:
-            assert reading.result(timeout=1)["session_id"] == metadata["session_id"]
-        finally:
-            release.set()
-        assert closing.result(timeout=5) == 0
+    monkeypatch.setattr(practice, "_execute_test_run", unexpected_pytest)
+    assert practice.finish_session(practice_repo, metadata, "trace the edge") == 0
+    assert practice.current_metadata(practice_repo)["test_outcome"] == "passed"
+    assert practice._test_receipt_path(practice_repo).read_text() == receipt
 
 
 def test_finish_preserves_progress_for_similar_problem_name(
@@ -2584,7 +2566,7 @@ def test_finish_preserves_progress_for_similar_problem_name(
     assert "arrays/first " in progress
 
 
-def test_finish_refuses_an_incomplete_zero_exit(
+def test_finish_does_not_execute_workspace_python_startup(
     practice_repo: Path,
 ) -> None:
     metadata, _, _ = practice.prepare_session(
@@ -2592,19 +2574,13 @@ def test_finish_refuses_an_incomplete_zero_exit(
     )
     _complete_session(practice_repo, metadata)
     workspace = practice_repo / practice.WORKSPACE_REL
-    (workspace / "sitecustomize.py").write_text("import os\nos._exit(0)\n")
-
-    with pytest.raises(
-        practice.PracticeError,
-        match="ended before pytest completed",
-    ):
-        practice.finish_session(practice_repo, metadata, "trace the edge")
-
-    assert not (practice_repo / ".challenges/reps.md").exists()
-    assert not (practice_repo / ".challenges/progress.md").exists()
-    current = practice.current_metadata(practice_repo)
-    assert "finished_at" not in current
-    assert "finish_note" not in current
+    sentinel = practice_repo / "startup-executed"
+    (workspace / "sitecustomize.py").write_text(
+        f"from pathlib import Path\nPath({str(sentinel)!r}).write_text('executed')\n"
+    )
+    assert practice.finish_session(practice_repo, metadata, "trace the edge") == 0
+    assert not sentinel.exists()
+    assert practice.current_metadata(practice_repo)["test_outcome"] == "passed"
 
 
 def test_stub_session_can_close_without_claiming_tests_ran(
@@ -2872,9 +2848,7 @@ def test_test_run_reports_build_before_locked_suite_for_no_collectable_tests(
 
     monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
 
-    collection_args = practice._candidate_collection_args(
-        practice_repo, metadata
-    )
+    collection_args = practice._candidate_collection_args(practice_repo, metadata)
     assert str(metadata["candidate_test"]) in collection_args
     assert str(metadata["reference_test"]) not in collection_args
     assert set(
@@ -2901,11 +2875,7 @@ def test_test_run_reports_build_before_locked_suite_for_no_collectable_tests(
     "candidate_tests",
     [
         "def test_generator():\n    yield 1\n",
-        (
-            "class TestCandidate:\n"
-            "    def test_generator(self):\n"
-            "        yield 1\n"
-        ),
+        ("class TestCandidate:\n    def test_generator(self):\n        yield 1\n"),
     ],
 )
 def test_invalid_generator_tests_relay_the_real_collection_error(
@@ -4232,9 +4202,7 @@ def test_candidate_collection_input_race_aborts_without_a_receipt(
     def unexpected_prepare(*_args: object, **_kwargs: object) -> dict[str, str]:
         raise AssertionError("unstable collection must not prepare locked tests")
 
-    monkeypatch.setattr(
-        practice, "_execute_candidate_collection", mutating_collection
-    )
+    monkeypatch.setattr(practice, "_execute_candidate_collection", mutating_collection)
     monkeypatch.setattr(practice, "_prepare_test_run", unexpected_prepare)
 
     assert practice.run_tests(practice_repo, metadata) == 3
@@ -4394,31 +4362,27 @@ def test_hanging_candidate_test_is_killed_at_the_bounded_deadline(
     assert "finished_at" not in practice.current_metadata(practice_repo)
 
 
-def test_finish_timeout_leaves_rep_open_without_logs(
+def test_finish_does_not_claim_a_stale_previous_success(
     practice_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     metadata, _, _ = practice.prepare_session(
         practice_repo, "comments", "arrays", "first"
     )
     _complete_session(practice_repo, metadata)
+    source = practice_repo / str(metadata["source"])
+    source.write_text(source.read_text() + "\n# Changed since the explicit run.\n")
 
-    def timed_out(
-        _root: Path, _current: dict[str, Any], before: dict[str, str]
-    ) -> practice.TestRun:
-        return practice.TestRun(
-            returncode=124,
-            before=before,
-            after=dict(before),
-            timed_out=True,
-        )
+    def unexpected_pytest(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("stale closeout must not implicitly run tests")
 
-    monkeypatch.setattr(practice, "_execute_test_run", timed_out)
-    with pytest.raises(practice.PracticeError, match="rep remains open"):
-        practice.finish_session(practice_repo, metadata, "trace the edge")
-
-    assert "finished_at" not in practice.current_metadata(practice_repo)
-    assert not (practice_repo / ".challenges/reps.md").exists()
-    assert not (practice_repo / ".challenges/progress.md").exists()
+    monkeypatch.setattr(practice, "_execute_test_run", unexpected_pytest)
+    assert (
+        practice.finish_session(practice_repo, metadata, "review the changed notes")
+        == 0
+    )
+    finished = practice.current_metadata(practice_repo)
+    assert finished["finish_state"] == "REFLECT"
+    assert finished["test_outcome"] == "not_run"
 
 
 def test_stale_test_inputs_abort_before_closeout_journal(
@@ -4429,19 +4393,17 @@ def test_stale_test_inputs_abort_before_closeout_journal(
     )
     _complete_session(practice_repo, metadata)
 
-    def mutating_pytest(
-        root: Path, current: dict[str, Any], before: dict[str, str]
-    ) -> practice.TestRun:
-        reference = practice_repo / str(metadata["reference_test"])
-        reference.write_text(reference.read_text() + "\n# changed during test\n")
-        return practice.TestRun(
-            returncode=0,
-            before=before,
-            after=practice._test_input_digests(root, current),
-            completed=True,
-        )
+    original_prepare = practice._prepare_test_run
 
-    monkeypatch.setattr(practice, "_execute_test_run", mutating_pytest)
+    def mutate_after_preflight(
+        root: Path, current: dict[str, Any], *, require_unlocked: bool
+    ) -> dict[str, str]:
+        before = original_prepare(root, current, require_unlocked=require_unlocked)
+        reference = practice_repo / str(metadata["reference_test"])
+        reference.write_text(reference.read_text() + "\n# changed during closeout\n")
+        return cast("dict[str, str]", before)
+
+    monkeypatch.setattr(practice, "_prepare_test_run", mutate_after_preflight)
     with pytest.raises(practice.PracticeError, match="inputs changed"):
         practice.finish_session(practice_repo, metadata, "trace the edge")
 
@@ -4979,7 +4941,7 @@ def test_resumed_start_does_not_present_candidate_docstring_or_derive_state(
         practice,
         "show_next",
         lambda _root, _metadata: pytest.fail(
-            "resume must wait for an explicit /continue boundary"
+            "resume must wait for an explicit just practice-next boundary"
         ),
     )
     monkeypatch.setattr(
@@ -5000,7 +4962,7 @@ def test_resumed_start_does_not_present_candidate_docstring_or_derive_state(
     assert "arrays / first" in output
     assert sentinel not in output
     assert "STATE:" not in output
-    assert "After an explicit save, run /continue." in output
+    assert "After an explicit save, run just practice-next." in output
     assert _workspace_snapshot(workspace) == before
 
 
