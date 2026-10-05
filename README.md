@@ -9,33 +9,33 @@ The same material is published at
 **[dsa-woodshed.space](https://dsa-woodshed.space)**. Employer-specific prep
 belongs in private downstream overlays; see the
 [source-of-truth contract](docs/guide/source-of-truth.md). Python is the only
-runnable track. [TRACK-CONTRACT.md](TRACK-CONTRACT.md) is its provisional,
-Python-derived practice-flow contract; future tracks must validate or amend it
-after operator-declared G and the prompt 75 portability verdict.
+runnable track. [TRACK-CONTRACT.md](TRACK-CONTRACT.md) defines its working
+practice behavior. New languages require justified curriculum and runnable
+acceptance evidence.
 
 ## Start in Codespaces
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1)
 
-When the editor opens, confirm Copilot Chat is signed in and available, then
-enter `/comments`. The command starts a rep; the reasoning itself belongs in
-ordinary source comments or docstrings, with no required labels or prefixes.
+When the editor opens, choose an activity from the terminal. Basic practice
+needs no private credentials. Start a guided session to choose time, activity,
+feedback, and workspace options; optional assistants use the same commands.
 
-```text
-/comments
+```bash
+just session
+just practice-start comments
 ```
 
-No topic is required. The command draws the next due problem. To choose one,
-append its topic and name, for example `/comments arrays two_sum`. If named
-vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start the same
-loop with those optional labels.
+No topic is required for the practice start command. It draws the next due
+problem. Choose one with `just practice-start comments arrays two_sum`.
+`reacto`, `clarp`, and `umpire` are optional vocabulary choices for the same loop.
 
 When you are ready to implement, the rep opens two gitignored files under
 `.challenges/workspace/`: your source file and your test file. The committed
 implementation under `src/algo/` stays unchanged.
 
 1. Write reasoning in ordinary source comments or docstrings.
-2. Save, then enter `/continue` or run `just practice-next`.
+2. Save, then run `just practice-next`.
 3. Implement the solution and add focused tests.
 4. Save and continue again when you want the next instruction.
 5. Run `just practice-test`, then close with `just practice-finish "one fix"`.
@@ -47,21 +47,21 @@ problem:
 just practice-study linked_lists lru_cache
 ```
 
-The interviewer opens read-only committed source and test snapshots, then
-waits. Only when you are ready does it run one emitted transition:
+The command opens read-only committed source and test snapshots. When you
+are ready, choose one emitted transition:
 
 ```bash
 just practice-start comments linked_lists lru_cache
 just practice-start-tests linked_lists lru_cache
 ```
 
-Write comments in the source file, not the Chat composer. The interviewer
-never writes your code or tests. Copilot is optional;
-the same flow starts from a terminal with `just practice-start comments`.
+Write comments in the source file. Candidate source and tests belong to you.
+Select optional agent tooling on your personal contribution fork; ordinary
+practice works directly through the terminal.
 
 The named frameworks are vocabulary choices, not grading systems. Keep their
 labels, replace them, or use ordinary source comments and docstrings in your
-own words. `/continue` reads the saved source and test files, then returns one
+own words. `just practice-next` reads the saved source and test files and returns one
 next action. It does not grade wording; tests remain the correctness signal.
 
 ## Current-rep commands
@@ -88,6 +88,7 @@ The Dev Container provides the same toolchain as Codespaces. Nix users can
 enter the pinned shell with `direnv allow`.
 
 ```bash
+just setup
 just doctor
 just test
 just lint
@@ -111,4 +112,5 @@ reference-sheet PDFs; the reading site syncs that content separately.
 
 Run `just catalog` for every exact practice pair, or search natural names with
 `just catalog "anagram, 2 sum and prime"`. Run `just --list` for all recipes.
-See [WELCOME.md](WELCOME.md) for the shortest first-session guide.
+See [WELCOME.md](WELCOME.md) for the shortest first-session guide and
+[CONTRIBUTING.md](CONTRIBUTING.md) for the personal-fork contribution workflow.

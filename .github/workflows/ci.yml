@@ -49,16 +49,12 @@ jobs:
           tool: just@1.40.0
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: just deps-sync
 
-      - name: Lint (ruff + mypy + public-boundary + doc-counts + no-stubs + appendix schema)
-        run: just lint
+      - uses: bazel-contrib/setup-bazel@8cb04a772ab4c1eb984e9c1b493a182e96c5e425
+        with:
+          bazelisk-cache: true
+          repository-cache: true
 
-      # Scoped empirically: plain `uv run pytest -q` collects and runs the
-      # whole tests/ tree cleanly, including tests/concepts — those modules
-      # use pytest.importorskip for their optional deps (numpy ships
-      # unconditionally via the scipy-stubs base dependency; scipy/flask/
-      # pydantic are genuinely optional and just skip 3 tests). No --extra
-      # concepts sync or --ignore is needed to keep the job green.
-      - name: Test
-        run: uv run pytest -q
+      - name: Maintainer gate
+        run: just check

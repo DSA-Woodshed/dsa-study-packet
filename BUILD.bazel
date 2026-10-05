@@ -1,29 +1,114 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("@rules_tectonic//tectonic:defs.bzl", "tectonic_pdf")
+load("//tools:test_lanes.bzl", "BOOKLET_SMOKE_TESTS")
 
 package(default_visibility = ["//visibility:public"])
 
-# booklet.tex is the SSOT artifact produced by `just packet` (gen_booklet.py).
-# Export it so other tools/repos can consume the source, and compile it here so
-# the neutral packet PDF is a cacheable Bazel graph node (remote-cache-friendly,
-# but not a proved remote-execution class) that private study lanes compose
-# against.
-exports_files(["booklet.tex"])
+filegroup(
+    name = "booklet_inputs",
+    srcs = glob(["src/algo/**/*.py"]) + ["reference-sheets/appendix-topics.json"],
+)
+
+py_binary(
+    name = "gen_booklet",
+    srcs = ["scripts/gen_booklet.py"],
+    legacy_create_init = False,
+    main = "scripts/gen_booklet.py",
+    python_version = "3.14.3",
+)
+
+# Generated sources belong to the graph; a git archive contains every input.
+# Explicit root locations also work when this is an external Bazel module.
+genrule(
+    name = "booklet_tex",
+    srcs = [
+        ":booklet_inputs",
+        "src/algo/__init__.py",
+        "reference-sheets/appendix-topics.json",
+    ],
+    outs = ["booklet.tex"],
+    cmd = "$(location :gen_booklet) --algo-src $$(dirname $(location src/algo/__init__.py)) --appendix-data $(location reference-sheets/appendix-topics.json) --output $@",
+    tools = [":gen_booklet"],
+)
 
 tectonic_pdf(
     name = "booklet",
     src = "booklet.tex",
+    bundle = ":tex_bundle",
+    extra_args = [
+        "-Z",
+        "deterministic-mode",
+    ],
     reruns = 2,
     tags = ["no-remote-exec"],
 )
 
-# Keep `just remote-test` meaningful without implying RBE: this checks the
-# cache-first booklet artifact after Bazel materializes it for a local test.
+py_binary(
+    name = "gen_tex_bundle",
+    srcs = ["build_support/gen_tex_bundle.py"],
+    legacy_create_init = False,
+    main = "build_support/gen_tex_bundle.py",
+    python_version = "3.14.3",
+)
+
+genrule(
+    name = "tex_bundle",
+    srcs = [
+        "@packet_tex//:files",
+        "@packet_tex//:resources/SSOT",
+        "build_support/tex-resources.lock.json",
+    ],
+    outs = ["packet-tex-bundle.zip"],
+    cmd = "$(location :gen_tex_bundle) --lock $(location build_support/tex-resources.lock.json) --input-dir $$(dirname $(location @packet_tex//:resources/SSOT)) --output $@",
+    tools = [":gen_tex_bundle"],
+)
+
 sh_test(
     name = "booklet_smoke",
-    srcs = ["tests/booklet_pdf_smoke.sh"],
+    size = "small",
+    srcs = BOOKLET_SMOKE_TESTS,
     args = ["$(rootpath :booklet)"],
     data = [":booklet"],
-    size = "small",
     tags = ["no-remote-exec"],
+)
+
+py_library(
+    name = "packet",
+    srcs = glob(["src/**/*.py"]),
+    imports = ["src"],
+)
+
+filegroup(
+    name = "python_sources",
+    srcs = glob([
+        "src/**/*.py",
+        "scripts/**/*.py",
+        "tests/**/*.py",
+        "build_support/**/*.py",
+    ]),
+)
+
+filegroup(
+    name = "test_inventory",
+    srcs = glob(
+        [
+            "tests/**/test_*.py",
+            "tests/**/*_test.py",
+            "tests/**/*.sh",
+        ],
+        allow_empty = True,
+    ),
+)
+
+filegroup(
+    name = "validation_inputs",
+    srcs = glob([
+        "docs/**/*.md",
+        "reference-sheets/**/*.md",
+        "reference-sheets/**/*.json",
+    ]) + [
+        "README.md",
+        "pyproject.toml",
+    ],
 )

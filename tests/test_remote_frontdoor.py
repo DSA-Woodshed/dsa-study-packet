@@ -1,4 +1,4 @@
-"""Clean-checkout contracts for the cache-compatible Bazel front door."""
+"""Missing protected build capabilities must never masquerade as local success."""
 
 from __future__ import annotations
 
@@ -17,20 +17,21 @@ def _write_executable(path: Path, body: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("recipe", "targets", "bazel_action"),
+    ("recipe", "targets"),
     [
-        ("remote-compile", (), "build //:booklet"),
-        ("remote-build", ("//...",), "build //..."),
-        ("remote-test", ("//:booklet_smoke",), "test //:booklet_smoke"),
-        ("remote-test", ("//...",), "test //..."),
+        ("remote-compile", ()),
+        ("remote-build", ("//...",)),
+        ("remote-test", ("//:booklet_smoke",)),
+        ("remote-test", ("//...",)),
+        ("remote-check", ()),
     ],
 )
-def test_remote_frontdoors_generate_before_bazel(
+def test_unattached_remote_frontdoors_refuse_execution(
     tmp_path: Path,
     recipe: str,
     targets: tuple[str, ...],
-    bazel_action: str,
 ) -> None:
+    (tmp_path / ".bazelversion").write_text("9.0.1\n")
     (tmp_path / "justfile").write_text((ROOT / "justfile").read_text())
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -49,6 +50,7 @@ def test_remote_frontdoors_generate_before_bazel(
         "BAZEL_BIN": str(fake_bazel),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "TRACE": str(trace),
+        "BAZEL_REMOTE_CACHE": "",
     }
 
     completed = subprocess.run(
@@ -67,8 +69,6 @@ def test_remote_frontdoors_generate_before_bazel(
         env=env,
     )
 
-    assert completed.returncode == 0, completed.stderr
-    assert trace.read_text().splitlines() == [
-        "uv run python scripts/gen_booklet.py",
-        f"bazel {bazel_action}",
-    ]
+    assert completed.returncode == 78, completed.stderr
+    assert "unavailable" in completed.stderr.lower()
+    assert not trace.exists()

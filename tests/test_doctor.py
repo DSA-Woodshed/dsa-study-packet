@@ -35,7 +35,7 @@ def test_git_is_a_required_core_tool(
     assert captured.err == "MISSING core tools: git\n"
 
 
-def test_codespaces_separates_environment_from_copilot_access(
+def test_codespaces_readiness_does_not_require_an_agent(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -57,10 +57,13 @@ def test_codespaces_separates_environment_from_copilot_access(
 
     captured = capsys.readouterr()
     assert "codespace  ok   Codespaces environment detected" in captured.out
-    assert "copilot    --   confirm Chat sign-in and entitlement" in captured.out
+    assert (
+        "Feedback: optional; choose tools on your personal contribution fork"
+        in captured.out
+    )
+    assert "copilot" not in captured.out
     assert "pytest: ok; import succeeds with .venv/bin/python" in captured.out
     assert (
-        "Start with /comments in Chat or 'just practice-start comments'."
-        in captured.out
+        "Start with 'just session' or 'just practice-start comments'." in captured.out
     )
     assert captured.err == ""

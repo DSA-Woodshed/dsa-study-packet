@@ -40,6 +40,31 @@ def _captured_uv_args(tmp_path: Path, *recipe_args: str) -> list[str]:
             ("catalog", "anagram, 2 sum and prime"),
             ["scripts/catalog.py", "anagram, 2 sum and prime"],
         ),
+        (("capabilities",), ["scripts/catalog.py", "--json"]),
+        (
+            ("session", "finish", "trace before optimizing; echo bad"),
+            ["scripts/session.py", "finish", "trace before optimizing; echo bad"],
+        ),
+        (
+            (
+                "session",
+                "start",
+                "algorithm/arrays/two_sum",
+                "--mode",
+                "implement",
+                "--minutes",
+                "30",
+            ),
+            [
+                "scripts/session.py",
+                "start",
+                "algorithm/arrays/two_sum",
+                "--mode",
+                "implement",
+                "--minutes",
+                "30",
+            ],
+        ),
         (("practice-start", "comments"), ["start", "comments"]),
         (
             ("practice-start", "comments", "arrays; echo bad", "two_sum"),
@@ -93,9 +118,7 @@ def test_practice_arguments_reach_python_as_single_values(
 
 def test_authority_surfaces_use_one_non_editor_closeout() -> None:
     authority_paths = (
-        "AGENTS.md",
-        ".claude/skills/interviewer/SKILL.md",
-        ".claude/skills/practice-day/SKILL.md",
+        "TRACK-CONTRACT.md",
         "docs/guide/getting-started.md",
         "docs/guide/interview-practice-evidence.md",
         "docs/guide/source-of-truth.md",
@@ -117,6 +140,14 @@ def test_editor_start_cannot_execute_shell_substitution(tmp_path: Path) -> None:
     )
 
     assert captured[-2:] == [malicious_topic, "two_sum"]
+    assert not sentinel.exists()
+
+
+def test_session_finish_cannot_execute_shell_substitution(tmp_path: Path) -> None:
+    sentinel = tmp_path / "executed"
+    malicious_note = f"$(touch {sentinel}) `touch {sentinel}`"
+    captured = _captured_uv_args(tmp_path, "session", "finish", malicious_note)
+    assert captured[-1] == malicious_note
     assert not sentinel.exists()
 
 

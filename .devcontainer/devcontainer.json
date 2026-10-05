@@ -1,15 +1,16 @@
 {
-	"name": "dsa-study-packet: interview woodshedding",
+	"name": "The DSA Woodshed",
 	"image": "mcr.microsoft.com/devcontainers/base:bookworm@sha256:bb7b81b6e5be17b5267f92f4ffda534fea37dab1df97b5e86c1f9b91da5c0b5d",
-	"features": {
-		"ghcr.io/devcontainers/features/sshd:1": {}
-	},
 	"onCreateCommand": "bash .devcontainer/setup.sh --tools",
 	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",
+	"postStartCommand": "bash .devcontainer/setup.sh --ready",
 	"waitFor": "updateContentCommand",
+	"containerUser": "vscode",
+	"runArgs": ["--cap-drop=ALL", "--security-opt=no-new-privileges"],
 	"containerEnv": {
-		"UV_PYTHON_PREFERENCE": "only-managed"
+		"UV_PYTHON_PREFERENCE": "only-managed",
+		"UV_PYTHON": "3.14.6"
 	},
 	"remoteEnv": {
 		"PATH": "/home/vscode/.local/bin:${containerEnv:PATH}"
@@ -17,7 +18,6 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"GitHub.copilot-chat",
 				"ms-python.python",
 				"charliermarsh.ruff",
 				"nefrob.vscode-just-syntax"

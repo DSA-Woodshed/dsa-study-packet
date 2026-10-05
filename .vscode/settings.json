@@ -1,38 +1,13 @@
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python.useEnvironmentsExtension": false,
-  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/src"
+  ],
   "python.testing.pytestEnabled": false,
   "python.testing.unittestEnabled": false,
   "ruff.nativeServer": "on",
   "ruff.organizeImports": true,
-  "chat.useAgentsMdFile": true,
-  "chat.agent.sandbox.enabled": "off",
-  "github.copilot.chat.codeGeneration.useInstructionFiles": false,
-  "chat.promptFilesRecommendations": {
-    "reacto": true,
-    "clarp": true,
-    "umpire": true,
-    "comments": true,
-    "continue": true
-  },
-  "chat.tools.terminal.autoApprove": {
-    "/^just practice-start (reacto|clarp|umpire|comments)( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
-    "/^just practice-start-tests [a-z][a-z0-9_]* [a-z][a-z0-9_]*$/": true,
-    "/^just practice-next$/": true,
-    "/^just practice-test$/": true,
-    "/^just practice-watch$/": true,
-    "/^just practice-repl$/": true,
-    "/^just practice-open( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
-    "/^just practice-study [a-z][a-z0-9_]* [a-z][a-z0-9_]*$/": true,
-    "/^just practice-finish \"[A-Za-z0-9 .,;:!?()'_-]{1,500}\"$/": true,
-    "/^just interview( [a-z][a-z0-9_]* [a-z][a-z0-9_]*)?$/": true,
-    "/^just catalog \"[A-Za-z0-9 ,.?!'_-]{1,120}\"$/": true
-  },
-  "github.copilot.enable": {
-    "*": false
-  },
-  "github.copilot.nextEditSuggestions.enabled": false,
   "editor.formatOnSave": true,
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"

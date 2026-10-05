@@ -3,19 +3,21 @@
 #
 # Deliberately independent of flake.nix: the Nix devshell stays the
 # maintainer's local flow; containers get only the three command-line tools the
-# editor practice loop needs (Python via uv, just, and watchexec). Codespaces
-# requests GitHub Copilot Chat; sign-in and entitlement are verified in VS Code.
+# editor practice loop needs (Python via uv, just, and optional watchexec).
+# No account, agent, host identity or protected service is bootstrapped here.
 #
 # Modes:
 #   --tools  pinned tool installs only (onCreateCommand)
 #   --sync   dependency sync only (updateContentCommand)
 #   --seed   seed per-user practice state (postCreateCommand)
+#   --ready  inspect public runtime readiness (postStartCommand)
 #   (none)   run all three phases, for an explicit manual bootstrap
 set -euo pipefail
 
 UV_VERSION="0.11.27"
 JUST_VERSION="1.40.0"
 WATCHEXEC_VERSION="2.3.2"
+PYTHON_VERSION="3.14.6"
 
 # Release digests are copied from each upstream project's signed/tagged GitHub
 # release assets. The container supports the two architectures offered by
@@ -32,13 +34,15 @@ export PATH="$BIN_DIR:$PATH"
 # The base image ships python3.11-minimal (no `json` module); uv must never
 # probe it. Always use uv-managed CPython. Mirrored in containerEnv.
 export UV_PYTHON_PREFERENCE=only-managed
+export UV_PYTHON="$PYTHON_VERSION"
 mkdir -p "$BIN_DIR"
 
 log()  { echo "[setup] $*"; }
 warn() { echo "[setup] WARN: $*" >&2; }
 
 curl_https() {
-	curl --proto '=https' --proto-redir '=https' --tlsv1.2 -LsSf "$@"
+	curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
+		--connect-timeout 10 --max-time 180 --retry 2 -LsSf "$@"
 }
 
 select_release_arch() {
@@ -146,14 +150,14 @@ require_version() {
 }
 
 sync_deps() {
-	log "syncing python deps (uv fetches CPython to satisfy requires-python)"
-	uv sync --extra dev
+	log "syncing locked public Python dependencies with CPython $PYTHON_VERSION"
+	uv sync --locked --python "$PYTHON_VERSION" --extra dev
 }
 
 seed_state() {
-	# Per-user, gitignored practice state. Every Codespace user starts fresh.
-	mkdir -p .challenges
-	just catalog || warn "catalog preview failed (non-fatal)"
+	# /workspaces and its checkout survive Codespaces rebuilds. Keep the state
+	# directory regular: the practice engine deliberately rejects symlinks.
+	.venv/bin/python scripts/environment.py setup
 }
 
 install_tools() {
@@ -199,13 +203,14 @@ case "${1:-}" in
 	--tools) install_tools ;;
 	--sync) sync_deps ;;
 	--seed) seed_state ;;
+	--ready) .venv/bin/python scripts/environment.py check ;;
 	"")
 		install_tools
 		sync_deps
 		seed_state
 		;;
 	*)
-		echo "usage: $0 [--tools|--sync|--seed]" >&2
+		echo "usage: $0 [--tools|--sync|--seed|--ready]" >&2
 		exit 2
 		;;
 esac

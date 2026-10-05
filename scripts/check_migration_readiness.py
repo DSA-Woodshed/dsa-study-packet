@@ -1,4 +1,4 @@
-"""Check repository-owned links and pre-transfer retirement invariants.
+"""Check repository-owned links and the packet Pages retirement boundary.
 
 The repository slug in ``tinyland.repo.json`` is the authority for mutable
 GitHub links.  This guard deliberately does not contain a future owner: a
@@ -19,7 +19,7 @@ REPOSITORY_NAME = "dsa-study-packet"
 
 REPOSITORY_LINK_RE = re.compile(
     rf"https://(?:github\.com|codespaces\.new)/"
-    rf"(?P<owner>[A-Za-z0-9_.-]+)/{REPOSITORY_NAME}(?:\.git)?"
+    rf"(?P<owner>[A-Za-z0-9_.-]+)/{REPOSITORY_NAME}(?:\.git)?(?![A-Za-z0-9_.-])"
 )
 LEGACY_PAGES_RE = re.compile(
     rf"https?://(?:www\.)?[A-Za-z0-9_.-]+\.github\.io/{REPOSITORY_NAME}/?",
@@ -31,7 +31,6 @@ LEGACY_PAGES_RE = re.compile(
 # inventory intentionally.
 OWNER_LINK_INVENTORY = frozenset(
     {
-        ".devcontainer/README.md",
         "CONTRIBUTING.md",
         "README.md",
         "docs/guide/getting-started.md",
@@ -46,9 +45,9 @@ LEARNER_CODESPACES_SURFACES = (
     "docs/guide/getting-started.md",
     "docs/index.md",
 )
-ACCEPTANCE_SURFACES = (
-    ".devcontainer/README.md",
-    "CONTRIBUTING.md",
+ACCEPTANCE_SURFACES = ("CONTRIBUTING.md",)
+ACCEPTANCE_FORK_URL = (
+    "https://codespaces.new/YOUR-USER/dsa-study-packet-contrib/tree/<disposable-branch>"
 )
 ISSUE_TEMPLATE_SURFACES = (
     ".github/ISSUE_TEMPLATE/bug.yml",
@@ -58,8 +57,8 @@ ISSUE_TEMPLATE_SURFACES = (
 INTENTIONAL_FIXTURE_SURFACES = frozenset({"tests/test_migration_readiness.py"})
 
 PAGES_CONTINUITY_NOTICE = (
-    "The packet's legacy GitHub Pages setting still serves only a noindex redirect "
-    "to the production site during pre-transfer continuity"
+    "The packet's legacy GitHub Pages setting remains enabled pending "
+    "validated production-site cutover"
 )
 PAGES_WORKFLOW_MARKERS = (
     "actions/configure-pages",
@@ -195,10 +194,10 @@ def check(root: Path) -> list[str]:
     for relative in ACCEPTANCE_SURFACES:
         path = root / relative
         text = path.read_text() if path.is_file() else ""
-        branch_url = f"{expected_codespaces}/tree/<disposable-branch>"
+        branch_url = ACCEPTANCE_FORK_URL
         if branch_url not in text:
             failures.append(
-                f"{relative}: missing branch-specific acceptance URL {branch_url}"
+                f"{relative}: missing personal-fork acceptance URL {branch_url}"
             )
         if "?quickstart=1" in text:
             failures.append(
