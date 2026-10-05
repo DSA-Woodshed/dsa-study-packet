@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -42,18 +43,20 @@ def test_real_repository_is_migration_ready() -> None:
 def test_owner_disagreement_is_caught(tmp_path: Path) -> None:
     _mirror_contract(tmp_path)
     readme = tmp_path / "README.md"
-    readme.write_text(readme.read_text().replace("Jesssullivan", "WrongOwner"))
+    slug = json.loads((tmp_path / "tinyland.repo.json").read_text())["repo"]["github"]
+    readme.write_text(readme.read_text().replace(slug, "WrongOwner/dsa-study-packet"))
 
     failures = check(tmp_path)
 
     assert any("repository link owner disagrees" in failure for failure in failures)
 
 
-def test_single_authority_change_supports_post_transfer_patch(tmp_path: Path) -> None:
+def test_authority_and_owner_links_change_together(tmp_path: Path) -> None:
     _mirror_contract(tmp_path)
+    slug = json.loads((tmp_path / "tinyland.repo.json").read_text())["repo"]["github"]
     for relative in {*OWNER_LINK_INVENTORY, "tinyland.repo.json"}:
         path = tmp_path / relative
-        path.write_text(path.read_text().replace("Jesssullivan", "DSA-Woodshed"))
+        path.write_text(path.read_text().replace(slug, "NewAuthority/dsa-study-packet"))
 
     assert check(tmp_path) == []
 
@@ -103,12 +106,11 @@ def test_retired_pages_url_is_caught(tmp_path: Path) -> None:
 
 def test_acceptance_quickstart_is_caught(tmp_path: Path) -> None:
     _mirror_contract(tmp_path)
-    acceptance = tmp_path / ".devcontainer/README.md"
+    acceptance = tmp_path / "CONTRIBUTING.md"
     acceptance.write_text(acceptance.read_text() + "\n?quickstart=1\n")
 
     assert (
-        ".devcontainer/README.md: acceptance instructions must not use "
-        "quickstart/resume"
+        "CONTRIBUTING.md: acceptance instructions must not use quickstart/resume"
     ) in check(tmp_path)
 
 
@@ -152,3 +154,18 @@ def test_true_contribution_fork_url_is_not_a_product_owner_link(tmp_path: Path) 
         + "\nhttps://github.com/Contributor/dsa-study-packet-contrib.git\n"
     )
     assert check(tmp_path) == []
+
+
+def test_org_product_branch_is_not_a_personal_fork_acceptance_source(
+    tmp_path: Path,
+) -> None:
+    _mirror_contract(tmp_path)
+    path = tmp_path / "CONTRIBUTING.md"
+    text = path.read_text().replace(
+        "https://codespaces.new/YOUR-USER/dsa-study-packet-contrib/tree/<disposable-branch>",
+        "https://codespaces.new/Jesssullivan/dsa-study-packet/tree/<disposable-branch>",
+    )
+    path.write_text(text)
+    assert any(
+        "missing personal-fork acceptance URL" in item for item in check(tmp_path)
+    )

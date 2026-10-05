@@ -1,4 +1,4 @@
-"""Tests for the exact-SHA, non-resuming Codespaces acceptance helpers."""
+"""Verify exact personal-fork Codespaces identity independently of providers."""
 
 from __future__ import annotations
 
@@ -12,182 +12,191 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import codespaces_acceptance as acceptance  # type: ignore[import-not-found]
 
 SHA = "a" * 40
-REPOSITORY = "Jesssullivan/dsa-study-packet"
+PRODUCT = "DSA-Woodshed/dsa-study-packet"
+SOURCE = "Jesssullivan/dsa-study-packet-contrib"
+PRODUCT_ID = 1184530300
+ENV = {"CODESPACES": "true", "CODESPACE_NAME": "exact-fork-proof"}
 
 
 def _root(tmp_path: Path) -> Path:
     (tmp_path / "tinyland.repo.json").write_text(
-        json.dumps({"repo": {"github": REPOSITORY}})
+        json.dumps({"repo": {"github": PRODUCT}})
     )
     return tmp_path
 
 
-def test_plan_resolves_remote_branch_and_emits_non_resuming_url(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root = _root(tmp_path)
-    seen: list[list[str]] = []
-
-    def capture(command: list[str], cwd: Path) -> str:
-        seen.append(command)
-        assert cwd == root
-        return SHA
-
-    monkeypatch.setattr(acceptance, "_capture", capture)
-
-    lines = acceptance.plan(root, "codespaces-acceptance-transfer")
-
-    assert seen == [
-        [
+def _outputs() -> dict[tuple[str, ...], str]:
+    return {
+        ("gh", "api", f"repos/{PRODUCT}"): json.dumps(
+            {"id": PRODUCT_ID, "full_name": PRODUCT, "fork": False}
+        ),
+        ("gh", "api", f"repos/{SOURCE}"): json.dumps(
+            {
+                "id": 2,
+                "full_name": SOURCE,
+                "fork": True,
+                "parent": {"id": PRODUCT_ID, "full_name": PRODUCT},
+            }
+        ),
+        (
             "gh",
             "api",
-            "repos/Jesssullivan/dsa-study-packet/branches/"
-            "codespaces-acceptance-transfer",
+            f"repos/{SOURCE}/branches/codespaces-acceptance-fork",
             "--jq",
             ".commit.sha",
-        ]
-    ]
+        ): SHA,
+        ("git", "rev-parse", "HEAD"): SHA,
+        ("git", "remote", "get-url", "origin"): f"git@github.com:{SOURCE}.git",
+        ("git", "status", "--porcelain=v1", "--untracked-files=normal"): "",
+        ("code", "--version"): "1.131.0\ncommit\narm64",
+        ("code", "--list-extensions", "--show-versions"): "ms-python.python@2026.10.0",
+    }
+
+
+def _mock_capture(
+    monkeypatch: pytest.MonkeyPatch, outputs: dict[tuple[str, ...], str]
+) -> None:
+    monkeypatch.setattr(
+        acceptance, "_capture", lambda command, _cwd: outputs[tuple(command)]
+    )
+
+
+def test_plan_resolves_only_the_verified_fork_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outputs = _outputs()
+    _mock_capture(monkeypatch, outputs)
+    lines = acceptance.plan(_root(tmp_path), "codespaces-acceptance-fork", SOURCE)
+    assert f"PRODUCT_REPOSITORY: {PRODUCT}" in lines
+    assert f"SOURCE_REPOSITORY: {SOURCE}" in lines
+    assert "SOURCE_RELATION: TRUE_PRODUCT_FORK" in lines
     assert f"EXPECTED_SHA: {SHA}" in lines
-    create = next(line for line in lines if line.startswith("CREATE_URL:"))
-    assert create.endswith("/tree/codespaces-acceptance-transfer")
-    assert "quickstart" not in create
-    assert "COPILOT_SIGN_IN: NOT_TESTED" in lines
-    assert "COPILOT_ENTITLEMENT: NOT_TESTED" in lines
+    assert (
+        f"CREATE_URL: https://codespaces.new/{SOURCE}/tree/codespaces-acceptance-fork"
+        in lines
+    )
+    assert "HOSTED_ACCEPTANCE: NOT_TESTED" in lines
+    assert not any("COPILOT" in line or "quickstart" in line for line in lines)
+    assert f"`just codespaces-acceptance-verify {SHA} {SOURCE}`" in lines[-1]
+
+
+def test_plan_can_infer_the_personal_source_from_origin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _mock_capture(monkeypatch, _outputs())
+    assert f"SOURCE_REPOSITORY: {SOURCE}" in acceptance.plan(
+        _root(tmp_path), "codespaces-acceptance-fork"
+    )
+
+
+@pytest.mark.parametrize("source", [PRODUCT, "not-a-repository", "../copied-repo"])
+def test_plan_rejects_product_pushes_and_invalid_repository_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str
+) -> None:
+    _mock_capture(monkeypatch, _outputs())
+    with pytest.raises(acceptance.AcceptanceError):
+        acceptance.plan(_root(tmp_path), "codespaces-acceptance-fork", source)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"fork": False},
+        {"parent": {"id": 9, "full_name": PRODUCT}},
+        {"parent": {"id": PRODUCT_ID, "full_name": "Elsewhere/copied-repo"}},
+        {"full_name": "Elsewhere/different-fork"},
+    ],
+)
+def test_copied_or_unrelated_repository_cannot_claim_fork_acceptance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: dict[str, object]
+) -> None:
+    outputs = _outputs()
+    key = ("gh", "api", f"repos/{SOURCE}")
+    record = json.loads(outputs[key]) | change
+    outputs[key] = json.dumps(record)
+    _mock_capture(monkeypatch, outputs)
+    with pytest.raises(acceptance.AcceptanceError, match="NOT_PRODUCT_FORK"):
+        acceptance.plan(_root(tmp_path), "codespaces-acceptance-fork", SOURCE)
 
 
 def test_plan_rejects_a_non_disposable_branch(tmp_path: Path) -> None:
     with pytest.raises(acceptance.AcceptanceError, match="BRANCH: INVALID"):
-        acceptance.plan(_root(tmp_path), "main")
+        acceptance.plan(_root(tmp_path), "main", SOURCE)
 
 
-def test_expected_sha_must_be_lowercase(tmp_path: Path) -> None:
-    with pytest.raises(acceptance.AcceptanceError, match="EXPECTED_SHA: INVALID"):
-        acceptance.verify(_root(tmp_path), "A" * 40, {})
-
-
-def test_verify_checks_repo_and_sha_but_not_copilot_ui(
+def test_verify_checks_exact_selected_source_without_requiring_an_agent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    root = _root(tmp_path)
-    outputs = {
-        ("git", "rev-parse", "HEAD"): SHA,
-        ("git", "remote", "get-url", "origin"): (
-            "git@github.com:Jesssullivan/dsa-study-packet.git"
-        ),
-        ("git", "status", "--porcelain=v1", "--untracked-files=normal"): "",
-        ("code", "--version"): "1.131.0\ncommit\narm64",
-        ("code", "--list-extensions", "--show-versions"): (
-            "github.copilot-chat@0.35.0\nms-python.python@2026.10.0"
-        ),
-    }
-    monkeypatch.setattr(
-        acceptance,
-        "_capture",
-        lambda command, _cwd: outputs[tuple(command)],
-    )
-
-    lines = acceptance.verify(
-        root,
-        SHA,
-        {"CODESPACES": "true", "CODESPACE_NAME": "exact-head-proof"},
-    )
-
+    _mock_capture(monkeypatch, _outputs())
+    lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+    assert f"PRODUCT_REPOSITORY: {PRODUCT}" in lines
+    assert f"SOURCE_REPOSITORY: {SOURCE}" in lines
     assert "REPOSITORY_CHECKOUT: PASS" in lines
-    assert "CHECKOUT_SHA: " + SHA in lines
     assert "WORKTREE: CLEAN (ignored private state excluded)" in lines
     assert "REPOSITORY_WRITE_AUTH: NOT_TESTED" in lines
-    assert "COPILOT_SIGN_IN: MANUAL_UI_REQUIRED" in lines
-    assert "COPILOT_ENTITLEMENT: MANUAL_UI_REQUIRED" in lines
-    assert "EXTENSION: github.copilot-chat@0.35.0" in lines
+    assert "HOSTED_PRACTICE_ACCEPTANCE: NOT_TESTED" in lines
+    assert "FEEDBACK_PROVIDER: OPTIONAL_NOT_TESTED" in lines
+    assert "PROTECTED_CAPABILITY: OPTIONAL_NOT_TESTED" in lines
+    assert not any("COPILOT" in line for line in lines)
+
+
+def test_verify_rejects_another_origin_even_when_the_sha_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outputs = _outputs()
+    outputs[("git", "remote", "get-url", "origin")] = (
+        "git@github.com:AnotherUser/dsa-study-packet-contrib.git"
+    )
+    _mock_capture(monkeypatch, outputs)
+    with pytest.raises(acceptance.AcceptanceError, match="EXPECTED_REPOSITORY"):
+        acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+
+
+def test_verify_rechecks_actual_fork_parent_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outputs = _outputs()
+    outputs[("gh", "api", f"repos/{SOURCE}")] = json.dumps(
+        {"id": 2, "full_name": SOURCE, "fork": False}
+    )
+    _mock_capture(monkeypatch, outputs)
+    with pytest.raises(acceptance.AcceptanceError, match="NOT_PRODUCT_FORK"):
+        acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
 
 
 def test_verify_rejects_a_stale_checkout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    root = _root(tmp_path)
-    monkeypatch.setattr(acceptance, "_capture", lambda _command, _cwd: "b" * 40)
-
+    outputs = _outputs()
+    outputs[("git", "rev-parse", "HEAD")] = "b" * 40
+    _mock_capture(monkeypatch, outputs)
     with pytest.raises(acceptance.AcceptanceError, match="delete this stale Codespace"):
-        acceptance.verify(
-            root,
-            SHA,
-            {"CODESPACES": "true", "CODESPACE_NAME": "stale"},
-        )
+        acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
 
 
-def test_verify_rejects_tracked_lifecycle_mutation(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "status", [" M .devcontainer/devcontainer.json", "?? conftest.py"]
+)
+def test_verify_rejects_lifecycle_mutation_and_untracked_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: str
 ) -> None:
-    root = _root(tmp_path)
-    outputs = {
-        ("git", "rev-parse", "HEAD"): SHA,
-        ("git", "status", "--porcelain=v1", "--untracked-files=normal"): (
-            " M .devcontainer/devcontainer.json"
-        ),
-    }
-    monkeypatch.setattr(
-        acceptance,
-        "_capture",
-        lambda command, _cwd: outputs[tuple(command)],
-    )
-
+    outputs = _outputs()
+    outputs[("git", "status", "--porcelain=v1", "--untracked-files=normal")] = status
+    _mock_capture(monkeypatch, outputs)
     with pytest.raises(acceptance.AcceptanceError, match="WORKTREE: DIRTY"):
-        acceptance.verify(
-            root,
-            SHA,
-            {"CODESPACES": "true", "CODESPACE_NAME": "mutated"},
-        )
+        acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
 
 
 def test_verify_rejects_a_non_codespaces_environment(tmp_path: Path) -> None:
     with pytest.raises(acceptance.AcceptanceError, match="CODESPACES: NOT_DETECTED"):
-        acceptance.verify(_root(tmp_path), SHA, {})
+        acceptance.verify(_root(tmp_path), SHA, {}, SOURCE)
 
 
-def test_verify_rejects_the_wrong_repository(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root = _root(tmp_path)
-    outputs = {
-        ("git", "rev-parse", "HEAD"): SHA,
-        ("git", "status", "--porcelain=v1", "--untracked-files=normal"): "",
-        ("git", "remote", "get-url", "origin"): (
-            "git@example.invalid:Elsewhere/dsa-study-packet.git"
-        ),
-    }
-    monkeypatch.setattr(
-        acceptance,
-        "_capture",
-        lambda command, _cwd: outputs[tuple(command)],
-    )
-
-    with pytest.raises(acceptance.AcceptanceError, match="EXPECTED_REPOSITORY"):
-        acceptance.verify(
-            root,
-            SHA,
-            {"CODESPACES": "true", "CODESPACE_NAME": "wrong-repo"},
-        )
+def test_expected_sha_must_be_lowercase(tmp_path: Path) -> None:
+    with pytest.raises(acceptance.AcceptanceError, match="EXPECTED_SHA: INVALID"):
+        acceptance.verify(_root(tmp_path), "A" * 40, ENV, SOURCE)
 
 
-def test_verify_rejects_unexpected_untracked_input(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    root = _root(tmp_path)
-    outputs = {
-        ("git", "rev-parse", "HEAD"): SHA,
-        ("git", "status", "--porcelain=v1", "--untracked-files=normal"): (
-            "?? conftest.py"
-        ),
-    }
-    monkeypatch.setattr(
-        acceptance,
-        "_capture",
-        lambda command, _cwd: outputs[tuple(command)],
-    )
-
-    with pytest.raises(acceptance.AcceptanceError, match="WORKTREE: DIRTY"):
-        acceptance.verify(
-            root,
-            SHA,
-            {"CODESPACES": "true", "CODESPACE_NAME": "untracked"},
-        )
+def test_verification_requires_the_recorded_source_argument() -> None:
+    with pytest.raises(SystemExit):
+        acceptance._parser().parse_args(["verify", "--expected-sha", SHA])

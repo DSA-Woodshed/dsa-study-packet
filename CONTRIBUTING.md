@@ -77,12 +77,29 @@ results in the pull request; rerun after changes that invalidate the evidence.
 
 ## Codespaces acceptance
 
-Use a newly created workspace at the exact pushed commit, never a resumed one.
-Run `just codespaces-acceptance-plan <disposable-branch>` and open its URL:
-`https://codespaces.new/Jesssullivan/dsa-study-packet/tree/<disposable-branch>`.
-Then run `just codespaces-acceptance-verify <EXPECTED_SHA>`. Optional agent
-provider readiness and protected SSO admission are separate from basic
-workspace readiness. Never copy credentials into acceptance evidence.
+Push a disposable `codespaces-acceptance-<unique-suffix>` branch to your
+personal fork. Use a newly created workspace at that exact commit, never a
+resumed one. Product metadata continues to name the organization upstream.
+
+```bash
+just codespaces-acceptance-plan <disposable-branch> YOUR-USER/dsa-study-packet-contrib
+```
+
+The plan verifies the fork's GitHub parent repository ID and resolves the
+branch on that fork. Its URL has this shape:
+`https://codespaces.new/YOUR-USER/dsa-study-packet-contrib/tree/<disposable-branch>`.
+Open the emitted `CREATE_URL`, then use both recorded identity fields:
+
+```bash
+just codespaces-acceptance-verify <EXPECTED_SHA> <SOURCE_REPOSITORY>
+```
+
+Verification checks the selected true fork, exact checkout SHA, clean worktree,
+and editor facts. It does not prove cold setup, the practice loop, persistence,
+or a successful hosted acceptance; record those separately. Agent-provider
+readiness and protected SSO admission are optional, separately selected
+capabilities. Basic hosted acceptance selects no provider and needs no private
+repository credential. Never copy credentials into acceptance evidence.
 
 Maintainers publish CalVer release tags (`vYYYY.M.PATCH`) through the existing
 release workflow. Assets remain inventoried on

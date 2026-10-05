@@ -117,12 +117,12 @@ migration-readiness:
     uv run python scripts/check_migration_readiness.py
 
 # Resolve an already-pushed disposable branch to an exact Codespaces URL/SHA
-codespaces-acceptance-plan branch:
-    uv run python scripts/codespaces_acceptance.py plan --branch {{ quote(branch) }}
+codespaces-acceptance-plan branch repository="":
+    uv run python scripts/codespaces_acceptance.py plan --branch {{ quote(branch) }} --repository {{ quote(repository) }}
 
 # Assert the exact repo and SHA from inside a genuinely new Codespace
-codespaces-acceptance-verify expected_sha:
-    uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }}
+codespaces-acceptance-verify expected_sha repository:
+    uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }} --repository {{ quote(repository) }}
 
 # Format code with ruff
 fmt *paths="src/ tests/": deps-sync

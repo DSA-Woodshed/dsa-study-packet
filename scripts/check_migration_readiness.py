@@ -31,7 +31,6 @@ LEGACY_PAGES_RE = re.compile(
 # inventory intentionally.
 OWNER_LINK_INVENTORY = frozenset(
     {
-        ".devcontainer/README.md",
         "CONTRIBUTING.md",
         "README.md",
         "docs/guide/getting-started.md",
@@ -46,9 +45,9 @@ LEARNER_CODESPACES_SURFACES = (
     "docs/guide/getting-started.md",
     "docs/index.md",
 )
-ACCEPTANCE_SURFACES = (
-    ".devcontainer/README.md",
-    "CONTRIBUTING.md",
+ACCEPTANCE_SURFACES = ("CONTRIBUTING.md",)
+ACCEPTANCE_FORK_URL = (
+    "https://codespaces.new/YOUR-USER/dsa-study-packet-contrib/tree/<disposable-branch>"
 )
 ISSUE_TEMPLATE_SURFACES = (
     ".github/ISSUE_TEMPLATE/bug.yml",
@@ -195,10 +194,10 @@ def check(root: Path) -> list[str]:
     for relative in ACCEPTANCE_SURFACES:
         path = root / relative
         text = path.read_text() if path.is_file() else ""
-        branch_url = f"{expected_codespaces}/tree/<disposable-branch>"
+        branch_url = ACCEPTANCE_FORK_URL
         if branch_url not in text:
             failures.append(
-                f"{relative}: missing branch-specific acceptance URL {branch_url}"
+                f"{relative}: missing personal-fork acceptance URL {branch_url}"
             )
         if "?quickstart=1" in text:
             failures.append(
