@@ -21,3 +21,13 @@ public packet supplies no identity endpoint, wrapping token or age identity.
 Authenticate only through the owning service's supported seat workflow after
 startup. Short-lived wrapping tokens must be minted after the environment is
 ready and handed off privately; they do not belong in prebuilds or source files.
+
+On 2026-10-05, source `057cfa99cd1a7d4e074bbbe1a59105a9aeb505fb` passed
+cold setup, repeated setup and recreated-container setup on a rootless Linux
+Podman runtime as UID1000 with all capabilities dropped and no new privileges.
+The pinned base image was used with one isolated public workspace mount. All
+33 focused environment/configuration tests passed, a real practice rep started,
+and all seven practice-state file hashes survived recreation unchanged. The
+absent protected adapter returned exit78. This acceptance covers the local
+container; real Codespaces lifecycle, editor tabs and identity commissioning
+remain separate checks.
