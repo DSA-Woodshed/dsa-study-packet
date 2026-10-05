@@ -10,9 +10,10 @@ from __future__ import annotations
 import argparse
 import ast
 import difflib
+import json
 import re
 import textwrap
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from core42 import CORE_42, PRACTICE_TARGETS
@@ -147,6 +148,131 @@ class CatalogEntry:
 
 
 @dataclass(frozen=True)
+class Capability:
+    """A public activity derived from material already present in the packet.
+
+    ``duration`` is a suggested number of minutes, not an enforced clock.
+    Availability describes the source material; optional editors and agents
+    are never prerequisites for selecting an activity.
+    """
+
+    id: str
+    kind: str
+    title: str
+    source: str
+    modes: tuple[str, ...]
+    duration: int
+    entrypoint: str
+    availability: str
+
+
+def _source_title(path: Path) -> str:
+    if path.suffix == ".py":
+        try:
+            docstring = ast.get_docstring(ast.parse(path.read_text())) or ""
+            return next(line.strip() for line in docstring.splitlines() if line.strip())
+        except (OSError, SyntaxError, StopIteration):
+            return path.stem.replace("_", " ")
+    try:
+        return next(
+            line.removeprefix("# ").strip()
+            for line in path.read_text().splitlines()
+            if line.startswith("# ")
+        )
+    except (OSError, StopIteration):
+        return path.stem.replace("-", " ")
+
+
+def capabilities(root: Path = ROOT) -> tuple[Capability, ...]:
+    """Return one inventory, deriving its corpus and counts from source files."""
+    records: list[Capability] = []
+
+    def add(
+        identity: str,
+        kind: str,
+        source: Path,
+        modes: tuple[str, ...],
+        duration: int,
+        title: str | None = None,
+    ) -> None:
+        records.append(
+            Capability(
+                identity,
+                kind,
+                title or _source_title(root / source),
+                source.as_posix(),
+                modes,
+                duration,
+                f"just session start {identity} --mode {modes[0]} --minutes {duration}",
+                "available" if (root / source).is_file() else "unavailable",
+            )
+        )
+
+    for entry in catalog_entries(root):
+        add(
+            f"algorithm/{entry.slug}",
+            "algorithm",
+            Path("src/algo") / entry.topic / f"{entry.problem}.py",
+            ("study", "implement", "tests-first", "talk", "board", "mock"),
+            30,
+            entry.summary,
+        )
+    for source in sorted((root / "src/concepts").glob("*.py")):
+        if source.name != "__init__.py":
+            add(
+                f"concept/{source.stem}",
+                "concept",
+                source.relative_to(root),
+                ("read",),
+                30,
+            )
+    for source in sorted((root / "src/practice").glob("*/*")):
+        if source.suffix in {".py", ".md"} and source.name != "__init__.py":
+            relative = source.relative_to(root / "src/practice").with_suffix("")
+            add(
+                f"advanced/{relative.as_posix()}",
+                "advanced",
+                source.relative_to(root),
+                ("read",),
+                60,
+            )
+    for source in sorted((root / "reference-sheets").glob("[0-9][0-9]-*.md")):
+        # Sheet 10 is explicitly the method authority. Expose it once, under
+        # that role, rather than creating a second curriculum registry.
+        kind = "method" if source.name.startswith("10-") else "reference"
+        add(f"{kind}/{source.stem}", kind, source.relative_to(root), ("read",), 15)
+    add(
+        "review/due",
+        "review",
+        Path("scripts/study_schedule.py"),
+        ("review",),
+        15,
+        "Choose a due problem from your private spaced-review queue",
+    )
+    add(
+        "contribution/guide",
+        "contribution",
+        Path("CONTRIBUTING.md"),
+        ("contribute",),
+        30,
+    )
+    return tuple(records)
+
+
+def capability_inventory(root: Path = ROOT) -> dict[str, object]:
+    """Stable JSON interface used by the site and optional personal adapters."""
+    entries = capabilities(root)
+    kinds = sorted({entry.kind for entry in entries})
+    return {
+        "schema": 1,
+        "counts": {
+            kind: sum(entry.kind == kind for entry in entries) for kind in kinds
+        },
+        "capabilities": [asdict(entry) for entry in entries],
+    }
+
+
+@dataclass(frozen=True)
 class QueryGroup:
     """One requested phrase and every matching canonical selection."""
 
@@ -178,7 +304,7 @@ def _problem_summary(root: Path, topic: str, problem: str) -> str:
     path = root / "src" / "algo" / topic / f"{problem}.py"
     try:
         docstring = ast.get_docstring(ast.parse(path.read_text()), clean=True) or ""
-    except OSError, SyntaxError:
+    except (OSError, SyntaxError):
         return problem.replace("_", " ")
     lines = docstring.splitlines()
     try:
@@ -187,9 +313,7 @@ def _problem_summary(root: Path, topic: str, problem: str) -> str:
         )
     except StopIteration:
         first = next((line.strip() for line in lines if line.strip()), problem)
-        return textwrap.shorten(
-            _plain_punctuation(first), width=150, placeholder="..."
-        )
+        return textwrap.shorten(_plain_punctuation(first), width=150, placeholder="...")
 
     body: list[str] = []
     for line in lines[start + 1 :]:
@@ -348,9 +472,7 @@ def _query_phrases(query: str) -> tuple[str, ...]:
     cleaned = []
     for phrase in phrases:
         normalized = _normalized(phrase)
-        words = [
-            word for word in normalized.split() if word not in _REQUEST_WORDS
-        ]
+        words = [word for word in normalized.split() if word not in _REQUEST_WORDS]
         if words:
             cleaned.append(
                 normalized if _has_substantive_negation(normalized) else " ".join(words)
@@ -492,11 +614,19 @@ def render_query(query: str, root: Path = ROOT) -> str:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("query", nargs="?", help="natural problem name or list")
+    parser.add_argument(
+        "--json", action="store_true", help="emit the complete capability inventory"
+    )
     return parser
 
 
 def main() -> int:
     args = _parser().parse_args()
+    if args.json:
+        if args.query is not None:
+            _parser().error("--json lists the inventory; omit the problem query")
+        print(json.dumps(capability_inventory(), indent=2))
+        return 0
     print(render_query(args.query) if args.query is not None else render_catalog())
     return 0
 
