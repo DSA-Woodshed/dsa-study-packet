@@ -1,13 +1,12 @@
 """dsa_study_packet: Bazel module exposing the company-neutral DSA study booklet.
 
-The booklet TeX is generated from source by the uv/just pipeline
-(`just packet` -> gen_booklet.py -> booklet.tex). Bazel compiles that TeX to a
-PDF via rules_tectonic, so private downstream modules can \\includepdf the
-neutral packet and wrap it with company-specific front/back matter.
+The public graph generates booklet TeX from declared sources and compiles it
+with rules_tectonic. Private downstream modules can \\includepdf the neutral
+packet without running uv or materializing generated files in this repository.
 
 Public targets:
   - //:booklet       Compiled neutral study packet PDF
-  - booklet.tex      Generated SSOT TeX source (exported)
+  - //:booklet.tex   Generated TeX source
 """
 
 module(
@@ -17,12 +16,26 @@ module(
 )
 
 bazel_dep(name = "rules_shell", version = "0.6.1")
-bazel_dep(name = "rules_tectonic", version = "0.1.0")
+bazel_dep(name = "rules_python", version = "2.4.0")
+bazel_dep(name = "rules_tectonic", version = "0.2.3")
 
-# Until rules_tectonic is published to a registry, point at the upstream repo
-# directly.
-git_override(
-    module_name = "rules_tectonic",
-    remote = "https://github.com/jesssullivan/rules_tectonic.git",
-    branch = "main",
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(python_version = "3.14.3")
+use_repo(python, "python_3_14_3")
+
+tex_resources = use_repo_rule("//:build_support/tex_bundle.bzl", "tex_resources")
+
+tex_resources(
+    name = "packet_tex",
+    lock_file = "//:build_support/tex-resources.lock.json",
 )
+
+# Maintainer dependencies are exported from the same uv.lock as the learner
+# workflow. Downstream PDF consumers do not resolve the validation-only wheels.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip", dev_dependency = True)
+pip.parse(
+    hub_name = "packet_pypi",
+    python_version = "3.14.3",
+    requirements_lock = "//tools:requirements.lock.txt",
+)
+use_repo(pip, "packet_pypi")

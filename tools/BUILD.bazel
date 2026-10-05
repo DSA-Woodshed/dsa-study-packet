@@ -1,0 +1,122 @@
+load("@packet_pypi//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_test")
+
+exports_files(["requirements.lock.txt"])
+
+_DATA = [
+    "//:python_sources",
+    "//:validation_inputs",
+    "check.py",
+    "pytest_main.py",
+    "validation_snapshot.py",
+]
+
+_CONCEPTS = [
+    requirement("flask"),
+    requirement("hypothesis"),
+    requirement("numpy"),
+    requirement("pydantic"),
+    requirement("scipy"),
+]
+
+# These tests need only declared Python sources, data, and PyPI wheels.
+# Editor/git/tool-installation integration tests remain in the local uv lane.
+py_test(
+    name = "unit_tests",
+    size = "medium",
+    srcs = [
+        "pytest_main.py",
+        "validation_snapshot.py",
+    ],
+    args = [
+        "tests/arrays",
+        "tests/backtracking",
+        "tests/bit_manipulation",
+        "tests/dp",
+        "tests/graphs",
+        "tests/greedy",
+        "tests/heaps",
+        "tests/linked_lists",
+        "tests/math",
+        "tests/patterns",
+        "tests/recursion",
+        "tests/searching",
+        "tests/sliding_window",
+        "tests/sorting",
+        "tests/stacks_queues",
+        "tests/strings",
+        "tests/trees",
+        "tests/two_pointers",
+        "tests/concepts",
+        "tests/test_catalog.py",
+        "tests/test_doc_generators.py",
+        "tests/test_doctor.py",
+        "tests/test_practice_day.py",
+        "tests/test_python_candidate_target.py",
+        "tests/test_rep_schema.py",
+        "tests/test_strip_solution.py",
+        "tests/test_study_schedule.py",
+        "tests/test_traces.py",
+        "tests/test_gen_booklet.py",
+        "tests/test_tex_bundle.py",
+    ],
+    data = _DATA,
+    env = {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"},
+    legacy_create_init = False,
+    main = "pytest_main.py",
+    python_version = "3.14.3",
+    deps = [
+        "//:packet",
+        requirement("pytest"),
+        requirement("pytest_benchmark"),
+    ] + _CONCEPTS,
+)
+
+py_test(
+    name = "lint",
+    size = "small",
+    srcs = [
+        "check.py",
+        "validation_snapshot.py",
+    ],
+    args = [
+        "ruff",
+        "$(rootpath @packet_pypi//ruff:data)",
+    ],
+    data = _DATA + ["@packet_pypi//ruff:data"],
+    legacy_create_init = False,
+    main = "check.py",
+    python_version = "3.14.3",
+    deps = [requirement("ruff")],
+)
+
+py_test(
+    name = "typecheck",
+    size = "medium",
+    srcs = [
+        "check.py",
+        "validation_snapshot.py",
+    ],
+    args = ["mypy"],
+    data = _DATA,
+    legacy_create_init = False,
+    main = "check.py",
+    python_version = "3.14.3",
+    deps = [
+        "//:packet",
+        requirement("mypy"),
+        requirement("pytest"),
+        requirement("scipy_stubs"),
+        requirement("pytest_benchmark"),
+    ] + _CONCEPTS,
+)
+
+test_suite(
+    name = "check",
+    tests = [
+        ":lint",
+        ":typecheck",
+        ":unit_tests",
+    ],
+    visibility = ["//visibility:public"],
+)
