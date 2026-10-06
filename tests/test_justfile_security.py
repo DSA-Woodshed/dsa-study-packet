@@ -151,6 +151,40 @@ def test_session_finish_cannot_execute_shell_substitution(tmp_path: Path) -> Non
     assert not sentinel.exists()
 
 
+@pytest.mark.parametrize(
+    "recipe", ["test", "test-watch", "test-concepts", "bench", "cov"]
+)
+def test_test_recipes_preserve_argument_boundaries(tmp_path: Path, recipe: str) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_uv = bin_dir / "uv"
+    fake_uv.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n"
+    )
+    fake_uv.chmod(0o755)
+    fake_watchexec = bin_dir / "watchexec"
+    fake_watchexec.write_text(
+        '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n'
+    )
+    fake_watchexec.chmod(0o755)
+    env = os.environ | {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    sentinel = tmp_path / "executed"
+    selection = "first_case or second_case"
+    literal = f"$(touch {sentinel}) `touch {sentinel}`; echo unsafe"
+    proc = subprocess.run(
+        ["just", recipe, "-k", selection, "--override-ini", literal],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    captured = json.loads(proc.stdout.splitlines()[-1])
+    assert captured[-4:] == ["-k", selection, "--override-ini", literal]
+    assert not sentinel.exists()
+
+
 def test_one_natural_name_returns_catalog_guidance_without_running_python(
     tmp_path: Path,
 ) -> None:
