@@ -107,19 +107,42 @@ def installed_adapter() -> Path | None:
     if not executable:
         return None
     try:
-        path = Path(executable).resolve(strict=True)
-        info = path.stat()
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid != 0
-            or info.st_mode & 0o022
-            or not os.access(path, os.X_OK)
-        ):
+        declared = Path(executable)
+        if not declared.is_absolute():
             return None
-        for parent in path.parents:
-            info = parent.stat()
-            if info.st_uid != 0 or info.st_mode & 0o022:
+        # Qualify each carrier before following its links: resolve() alone
+        # discards user-owned aliases that can point at any root-owned program.
+        path = Path("/")
+        info = path.lstat()
+        if info.st_uid != 0 or info.st_mode & 0o022:
+            return None
+        pending = list(declared.parts[1:])
+        links = 0
+        while pending:
+            component = pending.pop(0)
+            if component == "..":
+                path = path.parent
+                continue
+            path = path / component
+            info = path.lstat()
+            if info.st_uid != 0:
                 return None
+            if stat.S_ISLNK(info.st_mode):
+                links += 1
+                if links > 40:
+                    return None
+                target = path.readlink()
+                # Symlink mode 0777 does not grant mutation: its owner and
+                # already-qualified containing directory control the carrier.
+                pending = (
+                    list(target.parts[1:] if target.is_absolute() else target.parts)
+                    + pending
+                )
+                path = Path("/") if target.is_absolute() else path.parent
+            elif info.st_mode & 0o022 or (pending and not stat.S_ISDIR(info.st_mode)):
+                return None
+        if not stat.S_ISREG(info.st_mode) or not os.access(path, os.X_OK):
+            return None
         return path
     except OSError:
         return None
@@ -130,7 +153,7 @@ def protected_capability() -> tuple[dict[str, object], int]:
     if adapter is None:
         return {
             "protected_capabilities": "unavailable",
-            "reason": "independently installed portable-seat-attach adapter absent",
+            "reason": "independently installed portable-seat-attach adapter absent or untrusted",
             "public_core": "independent",
         }, 78
     try:
