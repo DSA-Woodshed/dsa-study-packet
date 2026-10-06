@@ -142,7 +142,7 @@ migration-readiness:
 codespaces-acceptance-plan branch repository="":
     uv run python scripts/codespaces_acceptance.py plan --branch {{ quote(branch) }} --repository {{ quote(repository) }}
 
-# Assert the exact repo and SHA from inside a genuinely new Codespace
+# Verify exact fork/SHA/clean source; optional CLI metadata does not prove editor attachment
 codespaces-acceptance-verify expected_sha repository:
     uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }} --repository {{ quote(repository) }}
 
