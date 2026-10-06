@@ -45,7 +45,7 @@ comments, implement a solution, write focused tests, and keep one correction.
 
 ## Your first rep
 
-Start with `just session` to choose time, activity, feedback, and workspace.
+Start with `just session` to choose an intent, a time budget, and an activity.
 For a direct rep, run `just practice-start comments`; no topic is required.
 Choose a pair with `just practice-start comments arrays two_sum`.
 Basic practice needs no private credential or assistant subscription.

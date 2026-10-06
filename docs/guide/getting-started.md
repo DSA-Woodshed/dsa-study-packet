@@ -18,8 +18,8 @@ opens a committed solution first. Practice work is never committed.
 
 1. Open Codespaces or your local Dev Container. Basic practice needs no
    private credential or assistant subscription.
-2. Run `just session`. Choose how much time you have, study or practice,
-   your focus, feedback, and where to work.
+2. Run `just session`. Choose your intent, how much time you have,
+   and an exact activity.
 3. There is no clock unless you choose one. An untimed conversation and
    a timed board rep train different skills.
 4. Stop with one useful correction; the next review remains in your queue.

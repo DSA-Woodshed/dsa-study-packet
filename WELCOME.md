@@ -1,7 +1,7 @@
 # Welcome to the woodshed
 
 Choose how to use your time before starting a problem. The guided session
-asks about duration, study or practice, focus, feedback, and workspace.
+asks for your intent, time budget, and an exact activity.
 
 ```bash
 just session

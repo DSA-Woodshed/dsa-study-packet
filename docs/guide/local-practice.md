@@ -38,8 +38,8 @@ Choose one lane:
 
 ## Start a rep
 
-Choose time, activity, and feedback through the guided session, or start
-one rep directly. Basic practice needs no private service:
+Choose an intent, a time budget, and an activity through the guided session,
+or start one rep directly. Basic practice needs no private service:
 
 ```bash
 just session

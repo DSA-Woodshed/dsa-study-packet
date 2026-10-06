@@ -18,8 +18,8 @@ acceptance evidence.
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1)
 
 When the editor opens, choose an activity from the terminal. Basic practice
-needs no private credentials. Start a guided session to choose time, activity,
-feedback, and workspace options; optional assistants use the same commands.
+needs no private credentials. Start a guided session to choose an intent,
+a time budget, and an activity; optional assistants use the same commands.
 
 ```bash
 just session
