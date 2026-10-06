@@ -151,7 +151,7 @@ def test_progress_consumers_preserve_existing_completion_labels(
     tmp_path: Path, contents: str | None, expected: dict[str, str]
 ) -> None:
     _, namespace = load_generator("gen_progress_page")
-    import study_schedule
+    completed = cast("Callable[[Path], dict[str, str]]", namespace["_completed"])
 
     progress = tmp_path / "progress.md"
     if contents is not None:
@@ -160,4 +160,4 @@ def test_progress_consumers_preserve_existing_completion_labels(
     parse.__globals__["PROGRESS_FILE"] = progress
 
     assert parse() == expected
-    assert study_schedule._completed(progress) == expected
+    assert completed(progress) == expected
