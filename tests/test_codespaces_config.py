@@ -359,9 +359,16 @@ def test_machine_ssh_keys_are_generated_only_in_codespaces(
         system_bin / "sudo", '#!/bin/sh\nprintf "%s\\n" "$*" > "$HOME/ssh-keygen-call"\n'
     )
     env["CODESPACES"] = codespaces
+    checkout = tmp_path / "checkout"
+    (checkout / ".devcontainer").mkdir(parents=True)
+    (checkout / ".devcontainer/setup.sh").write_text(
+        (ROOT / ".devcontainer/setup.sh").read_text()
+    )
+    (checkout / ".venv/bin").mkdir(parents=True)
+    _write_executable(checkout / ".venv/bin/python", "#!/bin/sh\nexit 0\n")
     process = subprocess.run(
-        ["bash", ".devcontainer/setup.sh", "--tools"],
-        cwd=ROOT,
+        ["bash", ".devcontainer/setup.sh", "--ready"],
+        cwd=checkout,
         env=env,
         text=True,
         capture_output=True,
