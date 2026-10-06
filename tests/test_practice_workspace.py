@@ -3830,6 +3830,73 @@ def test_metadata_rejects_noncanonical_paths(practice_repo: Path) -> None:
         practice.current_metadata(practice_repo)
 
 
+def test_direct_practice_creates_private_state_without_environment_setup(
+    practice_repo: Path,
+) -> None:
+    previous_umask = os.umask(0o022)
+    try:
+        metadata, _, _ = practice.prepare_session(
+            practice_repo, "comments", "arrays", "first"
+        )
+    finally:
+        os.umask(previous_umask)
+
+    state = practice_repo / practice.STATE_REL
+    assert state.stat().st_mode & 0o777 == 0o700
+    assert (practice_repo / metadata["source"]).is_file()
+    assert (practice_repo / metadata["candidate_test"]).is_file()
+
+
+def test_state_permission_repair_preserves_candidate_and_private_receipts(
+    practice_repo: Path,
+) -> None:
+    metadata, _, _ = practice.prepare_session(
+        practice_repo, "comments", "arrays", "first"
+    )
+    source = practice_repo / metadata["source"]
+    source.write_text(source.read_text() + "\n# Preserve my private draft.\n")
+    state = practice_repo / practice.STATE_REL
+    saved = {path: path.read_bytes() for path in state.rglob("*") if path.is_file()}
+    state.chmod(0o755)
+
+    assert (
+        practice.current_metadata(practice_repo)["session_id"] == metadata["session_id"]
+    )
+    assert state.stat().st_mode & 0o777 == 0o700
+    assert all(path.read_bytes() == content for path, content in saved.items())
+
+
+def test_foreign_owned_state_is_refused_without_changing_bytes_or_permissions(
+    practice_repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = practice_repo / practice.STATE_REL
+    state.mkdir(mode=0o755)
+    draft = state / "private-draft.py"
+    draft.write_text("# Preserve the existing owner's work.\n")
+    before = state.stat().st_mode
+    owner = os.getuid()
+    monkeypatch.setattr(os, "getuid", lambda: owner + 1)
+
+    with pytest.raises(practice.PracticeError, match="your regular directory"):
+        practice.prepare_session(practice_repo, "comments", "arrays", "first")
+
+    assert state.stat().st_mode == before
+    assert list(state.iterdir()) == [draft]
+    assert draft.read_text() == "# Preserve the existing owner's work.\n"
+
+
+def test_file_in_place_of_state_is_refused_without_overwriting_it(
+    practice_repo: Path,
+) -> None:
+    state = practice_repo / practice.STATE_REL
+    state.write_text("Preserve this existing data.\n")
+
+    with pytest.raises(practice.PracticeError, match="must be a directory"):
+        practice.prepare_session(practice_repo, "comments", "arrays", "first")
+
+    assert state.read_text() == "Preserve this existing data.\n"
+
+
 def test_metadata_rejects_symlinked_workspace(practice_repo: Path) -> None:
     practice.prepare_session(practice_repo, "reacto", "arrays", "first")
     workspace = practice_repo / practice.WORKSPACE_REL
