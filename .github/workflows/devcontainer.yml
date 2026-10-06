@@ -23,22 +23,8 @@ on:
       - "scripts/environment.py"
       - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
+  # The required smoke context must report for every PR, including docs changes.
   pull_request:
-    paths:
-      - ".devcontainer/**"
-      - "justfile"
-      - "pyproject.toml"
-      - "uv.lock"
-      - "scripts/strip_solution.py"
-      - "scripts/core42.py"
-      - "scripts/python_candidate_target.py"
-      - "scripts/practice_workspace.py"
-      - "scripts/rep_schema.py"
-      - "scripts/catalog.py"
-      - "scripts/session.py"
-      - "scripts/environment.py"
-      - ".vscode/**"
-      - ".github/workflows/devcontainer.yml"
   workflow_dispatch:
 
 jobs:
