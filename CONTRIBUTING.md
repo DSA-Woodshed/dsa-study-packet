@@ -28,9 +28,14 @@ Do not create another product repository. `just setup` installs the shared hooks
 Core practice requires no repository API key or private service. Advanced
 protected capabilities are explicitly selected through `just protected-capability`.
 
-`just hooks-install` sets the local hook path, chains any global hook layer,
-sets pushes to `origin`, and disables the `upstream` push URL. Keep signed
-commits enabled (`git config commit.gpgsign true`) with your own signing key.
+`just hooks-install` optionally reads the actual GitHub login and fork network.
+In an independently owned personal fork it installs the shared hook path and
+sets the push default to `origin` only when unset. Existing custom hooks, push
+defaults, shared worktree configuration, remote URLs, and signing settings are
+preserved. An unavailable identity readback produces a diagnostic and leaves
+public setup usable. Inspect remotes and configuration, and coordinate with the
+checkout owner before changing a preserved setting. The hooks chain a distinct
+global hook layer. Keep signed commits enabled with your own signing key.
 Use semantic branches such as `feat/short-name` and conventional subjects such
 as `fix: preserve candidate test selection`. Hooks refuse organization pushes,
 unsigned new commits, and tool attribution in commit messages. They warn about

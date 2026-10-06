@@ -257,5 +257,112 @@ check "unsigned local merge commit refused" 1 --refused -- git push -q origin fe
 
 check "branch deletion passes" 0 --quiet -- git push -q origin :wip/x
 
+# Installer ownership fixtures use a stand-in API, never a real login or network.
+# They assert configuration effects rather than diagnostic wording.
+mkdir -p "$work/bin"
+cat > "$work/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+[ "${WOODSHED_FIXTURE_API:-ok}" != unavailable ] || exit 1
+case "$4" in
+  user) printf '%s\n' "${WOODSHED_FIXTURE_LOGIN:-contributor}" ;;
+  repos/DSA-Woodshed/.github) printf '101\tDSA-Woodshed/.github\n' ;;
+  repos/contributor/woodshed-contrib)
+    if [ "${WOODSHED_FIXTURE_API:-ok}" = changed ]; then
+      git config --local core.hooksPath changed-during-readback
+    elif [ "${WOODSHED_FIXTURE_API:-ok}" = changed-default ]; then
+      printf '#!/usr/bin/env bash\nexit 0\n' > .git/hooks/pre-commit
+      chmod +x .git/hooks/pre-commit
+    fi
+    printf 'contributor/woodshed-contrib\tcontributor\t%s\t%s\t%s\n' \
+      "${WOODSHED_FIXTURE_FORK:-true}" "${WOODSHED_FIXTURE_PARENT:-101}" "${WOODSHED_FIXTURE_SOURCE:-101}"
+    ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x "$work/bin/gh"
+
+installer_repo() {
+  git init -q "$work/installer-$1"
+  cd "$work/installer-$1"
+  cp -R "$hooks" githooks
+  git remote add origin https://github.com/contributor/woodshed-contrib.git
+  git remote add upstream git@github.com:DSA-Woodshed/.github.git
+}
+
+install_hooks() {
+  PATH="$work/bin:$PATH" bash -c 'source githooks/_lib.sh; woodshed_install_hooks githooks DSA-Woodshed/.github'
+}
+
+installer_defaults() (
+  installer_repo defaults
+  local upstream_before config_before
+  upstream_before="$(git remote get-url --push upstream)"
+  git config --local commit.gpgsign false
+  install_hooks || return 1
+  [ "$(git config --local --get core.hooksPath)" = githooks ] || return 1
+  [ "$(git config --local --get remote.pushDefault)" = origin ] || return 1
+  [ "$(git remote get-url --push upstream)" = "$upstream_before" ] || return 1
+  [ "$(git config --local --get commit.gpgsign)" = false ] || return 1
+  config_before="$(cat .git/config)"
+  install_hooks || return 1
+  [ "$(cat .git/config)" = "$config_before" ]
+)
+
+installer_preserves() (
+  local mode="$1" config_before
+  installer_repo "$mode"
+  case "$mode" in
+    custom) git config --local core.hooksPath maintainer-hooks ;;
+    push-default) git config --local remote.pushDefault another-owned-remote ;;
+    global-push-default)
+      cp "$GIT_CONFIG_GLOBAL" "$work/installer-global-config"
+      export GIT_CONFIG_GLOBAL="$work/installer-global-config"
+      git config --global remote.pushDefault another-owned-remote
+      ;;
+    built-in) printf '#!/usr/bin/env bash\nexit 0\n' > .git/hooks/pre-commit; chmod +x .git/hooks/pre-commit ;;
+    shared)
+      git -c core.hooksPath=/dev/null commit -q --allow-empty -m 'chore: worktree fixture'
+      git worktree add -q -b feat/other-owner "$work/installer-linked"
+      cd "$work/installer-linked"
+      cp -R "$hooks" githooks
+      ;;
+    worktree-custom)
+      git config --local extensions.worktreeConfig true
+      git config --worktree core.hooksPath another-owner-hooks
+      ;;
+    different-login) export WOODSHED_FIXTURE_LOGIN=another-person ;;
+    wrong-parent) export WOODSHED_FIXTURE_PARENT=102 ;;
+    wrong-source) export WOODSHED_FIXTURE_SOURCE=102 ;;
+    non-fork) export WOODSHED_FIXTURE_FORK=false ;;
+    unavailable) export WOODSHED_FIXTURE_API=unavailable ;;
+    canonical-origin) git remote set-url origin https://github.com/DSA-Woodshed/.github.git ;;
+    push-elsewhere) git remote set-url --push origin https://github.com/contributor/another-repo.git ;;
+    wrong-upstream) git remote set-url upstream https://github.com/DSA-Woodshed/another-repo.git ;;
+    credential-url) git remote set-url origin https://hidden@example.org/contributor/woodshed-contrib.git ;;
+    changed) export WOODSHED_FIXTURE_API=changed ;;
+    changed-default) export WOODSHED_FIXTURE_API=changed-default ;;
+  esac
+  local common
+  common="$(git rev-parse --git-common-dir)"
+  config_before="$(cat "$common/config")"
+  install_hooks || return 1
+  if [ "$mode" = push-default ] || [ "$mode" = global-push-default ]; then
+    [ "$(git config --get remote.pushDefault)" = another-owned-remote ] || return 1
+    [ "$(git config --local --get core.hooksPath)" = githooks ]
+  elif [ "$mode" = changed ]; then
+    [ "$(git config --local --get core.hooksPath)" = changed-during-readback ] || return 1
+    ! git config --local --get remote.pushDefault >/dev/null
+  else
+    [ "$(cat "$common/config")" = "$config_before" ]
+  fi
+)
+
+check "verified personal fork installs only missing defaults and is idempotent" 0 --quiet -- installer_defaults
+for mode in custom built-in shared worktree-custom different-login wrong-parent wrong-source non-fork \
+  unavailable canonical-origin push-elsewhere wrong-upstream credential-url changed changed-default push-default global-push-default; do
+  check "installer preserves configuration: $mode" 0 --quiet -- installer_preserves "$mode"
+done
+
 printf '\nhooks-test: %s passed, %s failed\n' "$passed" "$failed"
 [ "$failed" -eq 0 ]
