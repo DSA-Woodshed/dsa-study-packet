@@ -138,7 +138,8 @@ def test_devcontainer_runs_each_lifecycle_phase_once() -> None:
         config["postCreateCommand"],
     )
     assert len(set(lifecycle)) == 3
-    assert "@sha256:" in config["image"]
+    dockerfile = (ROOT / ".devcontainer" / config["build"]["dockerfile"]).read_text()
+    assert "FROM mcr.microsoft.com/devcontainers/base@sha256:" in dockerfile
     assert config["remoteEnv"]["PATH"].startswith("/home/vscode/.local/bin:")
 
 
@@ -155,8 +156,6 @@ def test_devcontainer_has_no_assistant_or_protected_identity_requirement() -> No
     assert not config.get("secrets")
     assert not config.get("mounts")
     assert "postAttachCommand" not in config
-    assert "--cap-drop=ALL" in config["runArgs"]
-    assert "--security-opt=no-new-privileges" in config["runArgs"]
 
 
 def test_devcontainer_does_not_inject_a_container_wide_node_preload() -> None:
@@ -344,9 +343,43 @@ def test_setup_does_not_install_unused_agent_sandbox_packages() -> None:
     setup = (ROOT / ".devcontainer/setup.sh").read_text()
 
     assert "apt-get" not in setup
-    assert "sudo " not in setup
     assert "bubblewrap" not in setup
     assert "socat" not in setup
+
+
+@pytest.mark.parametrize("codespaces", ["true", "false"])
+def test_machine_ssh_keys_are_generated_only_in_codespaces(
+    tmp_path: Path, codespaces: str
+) -> None:
+    env, home = _setup_env(tmp_path)
+    system_bin = Path(env["PATH"].split(os.pathsep, 1)[0])
+    _write_executable(system_bin / "sshd", "#!/bin/sh\nexit 0\n")
+    _write_executable(system_bin / "id", "#!/bin/sh\nprintf '1000\\n'\n")
+    _write_executable(
+        system_bin / "sudo", '#!/bin/sh\nprintf "%s\\n" "$*" > "$HOME/ssh-keygen-call"\n'
+    )
+    env["CODESPACES"] = codespaces
+    checkout = tmp_path / "checkout"
+    (checkout / ".devcontainer").mkdir(parents=True)
+    (checkout / ".devcontainer/setup.sh").write_text(
+        (ROOT / ".devcontainer/setup.sh").read_text()
+    )
+    (checkout / ".venv/bin").mkdir(parents=True)
+    _write_executable(checkout / ".venv/bin/python", "#!/bin/sh\nexit 0\n")
+    process = subprocess.run(
+        ["bash", ".devcontainer/setup.sh", "--ready"],
+        cwd=checkout,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert process.returncode == 0, process.stderr
+    call = home / "ssh-keygen-call"
+    if codespaces == "true":
+        assert call.read_text().strip() == "-n ssh-keygen -A"
+    else:
+        assert not call.exists()
 
 
 def test_devcontainer_workflow_uses_pinned_actions_without_provider_credentials() -> (

@@ -160,6 +160,18 @@ seed_state() {
 	.venv/bin/python scripts/environment.py setup
 }
 
+prepare_codespaces_ssh() {
+	# Generate this Codespace's machine keys at runtime, never in a cached image.
+	# The public base provides sudo; these are unrelated to any host identity.
+	if [ "${CODESPACES:-false}" = "true" ] && command -v sshd >/dev/null 2>&1; then
+		if [ "$(id -u)" = "0" ]; then
+			ssh-keygen -A
+		else
+			sudo -n ssh-keygen -A
+		fi
+	fi
+}
+
 install_tools() {
 	if ! has_version uv "$UV_VERSION" \
 		|| ! has_version just "$JUST_VERSION" \
@@ -203,7 +215,10 @@ case "${1:-}" in
 	--tools) install_tools ;;
 	--sync) sync_deps ;;
 	--seed) seed_state ;;
-	--ready) .venv/bin/python scripts/environment.py check ;;
+	--ready)
+		prepare_codespaces_ssh
+		.venv/bin/python scripts/environment.py check
+		;;
 	"")
 		install_tools
 		sync_deps

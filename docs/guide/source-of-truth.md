@@ -28,7 +28,8 @@ in reference material are context, not runnable practice tracks.
 
 | Output | Command |
 |--------|---------|
-| `booklet.tex` / `booklet.pdf` / `docs/assets/booklet.pdf` | `just packet` |
+| `bazel-bin/booklet.tex` / `bazel-bin/booklet.pdf` | generated within `just packet` |
+| `booklet.pdf` / `docs/assets/booklet.pdf` | copied from the Bazel output by `just packet` |
 | `reference-sheets/pdf/*.pdf` | `just pdf-all` |
 | local MkDocs output in `site/` | `just docs-build` |
 

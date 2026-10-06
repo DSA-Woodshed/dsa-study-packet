@@ -40,7 +40,9 @@ from the authored-commit signature check.
 ## Product changes
 
 Add a problem to `scripts/core42.py`, then run `just new topic problem`.
-Implement reference source and focused tests together. Candidate exercises
+Implement reference source and focused tests together. Add each new test file
+to exactly one lane in `tools/test_lanes.bzl`: unit tests use declared Bazel
+inputs; runtime and editor integration tests use uv. Candidate exercises
 remain isolated under gitignored `.challenges`; do not solve a learner's files
 as part of product development. Authored method belongs in the reference
 sheets; generated docs and counts follow their source.
@@ -62,8 +64,6 @@ without rejecting untracked local overlays.
 
 ```bash
 just check
-just hooks-check
-just hooks-test
 git push -u origin HEAD
 gh pr create --repo DSA-Woodshed/dsa-study-packet
 ```
@@ -72,8 +72,10 @@ The hook implementation is mirrored byte-for-byte from organization
 `.github/githooks` into `.githooks`. `just hooks-check` compares the mirror;
 `just hooks-test` runs isolated signed/unsigned and fork/org fixtures. Update
 shared hooks in the governance repository before refreshing consumers.
-`just check` also runs the locked lint and test gates. Include commands and
-results in the pull request; rerun after changes that invalidate the evidence.
+`just check` includes both hook checks, Bazel unit/lint/type checks, tracked
+source contracts, and the uv integration lane. Each maintainer suite runs once.
+Use `just test` for the learner's full uv suite. Include commands and results
+in the pull request; rerun after changes that invalidate the evidence.
 
 ## Codespaces acceptance
 
