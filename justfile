@@ -260,51 +260,25 @@ packet:
 # Compatibility name routes to the sole booklet graph.
 pdf-booklet: packet
 
-# Explicitly selected remote capability. Missing attachment is unavailable.
-remote-compile *targets:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
-    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
-        echo "Remote build unavailable: select a protected cache capability first. Use just packet for a public local build." >&2
-        exit 78
-    fi
-    targets={{ quote(targets) }}; [ -n "$targets" ] || targets="//:booklet"
-    exec just flywheel-build $targets
+# Retired profile commands remain explicit refusals until GF admission exists.
+_remote-unavailable:
+    @printf 'Remote action unavailable: the retired Flywheel cache/profile interface is disabled. DSA has no qualified Flywheel admission. See README.md.\n' >&2
+    @exit 78
 
-remote-build *targets:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    exec just remote-compile {{ quote(targets) }}
+remote-compile *targets: _remote-unavailable
 
-remote-test *targets:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
-    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
-        echo "Remote tests unavailable: select a protected cache capability first. Use just maintainer-check for public local validation." >&2
-        exit 78
-    fi
-    targets={{ quote(targets) }}; [ -n "$targets" ] || targets="//tools:check"
-    exec just flywheel-test $targets
+remote-build *targets: _remote-unavailable
 
-remote-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    set -a; [ -f .env.flywheel.local ] && . ./.env.flywheel.local; set +a
-    if [ -z "${BAZEL_REMOTE_CACHE:-}" ]; then
-        echo "Remote capability unavailable: no cache attachment selected." >&2
-        exit 78
-    fi
-    just flywheel-doctor
-    just flywheel-verify
+remote-test *targets: _remote-unavailable
+
+remote-check: _remote-unavailable
 
 # Build the overlay-pattern demo (examples/overlay-demo) -> wrapped PDF
 # Its source is generated in the same declared public graph.
 overlay-demo:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Composing overlay demo via the cache-first front door..."
+    echo "Composing the public overlay demo locally..."
     {{ quote(bazel) }} build //examples/overlay-demo:study_packet_example
     echo "-> bazel-bin/examples/overlay-demo/study_packet_example.pdf"
 
@@ -537,5 +511,3 @@ rep line:
 # Atomically log and schedule one non-editor rep.
 rep-finish topic problem line:
     @uv run python scripts/session.py workspace finish-non-editor {{ quote(topic) }} {{ quote(problem) }} {{ quote(line) }}
-
-import? "justfile.flywheel"

@@ -1,8 +1,7 @@
 # Bazel config for dsa_study_packet.
 #
 # Anonymous local builds use public registries and downloaded toolchains.
-# Optional cache/executor configuration stays endpoint-free and is selected by
-# an explicit Just recipe; neither credentials nor RBE are needed for validation.
+# Credentials and remote execution are not needed for public validation.
 
 common --enable_bzlmod
 common --registry=https://raw.githubusercontent.com/xoxd-ai/bazel-registry/c0c85bef791a4602e632c97ba449eadcbfa5ca49
@@ -14,10 +13,5 @@ build --action_env=SOURCE_DATE_EPOCH=0
 build --disk_cache=~/.cache/bazel/dsa-study-packet
 test --test_output=errors
 
-# GloriousFlywheel front-door kit fragment: endpoint-free build:ci-cached +
-# build:executor-backed. The wrapper selects --config=ci-cached in
-# shared-cache-backed mode and adds the concrete endpoint flag at invocation.
-try-import %workspace%/.bazelrc.flywheel
-
-# User-local overrides last so developers can still override the kit.
+# User-local overrides last so developers can still configure their own tools.
 try-import %workspace%/user.bazelrc

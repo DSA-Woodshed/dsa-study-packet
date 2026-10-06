@@ -1,4 +1,4 @@
-"""Missing protected build capabilities must never masquerade as local success."""
+"""Retired profile configuration never authorizes a remote action."""
 
 from __future__ import annotations
 
@@ -26,13 +26,18 @@ def _write_executable(path: Path, body: str) -> None:
         ("remote-check", ()),
     ],
 )
-def test_unattached_remote_frontdoors_refuse_execution(
+@pytest.mark.parametrize("profile", ["absent", "environment", "file"])
+def test_remote_frontdoors_refuse_retired_profiles(
     tmp_path: Path,
     recipe: str,
     targets: tuple[str, ...],
+    profile: str,
 ) -> None:
     (tmp_path / ".bazelversion").write_text("9.0.1\n")
     (tmp_path / "justfile").write_text((ROOT / "justfile").read_text())
+    fragment = ROOT / "justfile.flywheel"
+    if fragment.is_file():
+        (tmp_path / fragment.name).write_text(fragment.read_text())
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     trace = tmp_path / "trace"
@@ -45,12 +50,19 @@ def test_unattached_remote_frontdoors_refuse_execution(
         fake_bazel,
         'printf "bazel %s\\n" "$*" >> "$TRACE"',
     )
+    for command in ("gloriousflywheel-bazel", "flywheel-doctor", "flywheel-verify"):
+        _write_executable(bin_dir / command, 'printf "provider called\\n" >> "$TRACE"')
+    if profile == "file":
+        (tmp_path / ".env.flywheel.local").write_text(
+            'printf "profile loaded\\n" >> "$TRACE"\n'
+            "BAZEL_REMOTE_CACHE=unused.invalid\n"
+        )
     env = {
         **os.environ,
         "BAZEL_BIN": str(fake_bazel),
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "TRACE": str(trace),
-        "BAZEL_REMOTE_CACHE": "",
+        "BAZEL_REMOTE_CACHE": "unused.invalid" if profile == "environment" else "",
     }
 
     completed = subprocess.run(
