@@ -26,9 +26,12 @@ qualified local launch rather than the portable hosted configuration.
 After startup, run `just session` to choose how to use your time, or `just` to
 list commands. `just env-check` reports the installed public tools and practice
 storage. `just protected-capability` only delegates to an independently installed
-and trusted `portable-seat-attach` adapter. Missing or unadmitted identity support
-returns an explicit unavailable result and nonzero exit; public practice remains
-usable. The repository creates no OpenBao role or token and reads no seat secret.
+and trusted `portable-seat-attach` adapter. Missing, untrusted, refused or hung
+adapters return an explicit unavailable result and exit78; public practice remains
+usable. Success reports `local-runtime-validated`, with issuer authorization
+`not-checked`. It validates local runtime bindings, not a learner's current
+grant or server-side withdrawal. The repository creates no OpenBao role or token
+and reads no seat secret.
 
 In Codespaces, the checkout and its regular, gitignored `.challenges/` directory
 live under `/workspaces`, which survives stop/start and container rebuilds.

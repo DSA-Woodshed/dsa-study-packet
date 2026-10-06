@@ -1,4 +1,4 @@
-"""Public readiness remains independent from optional runtime seat admission."""
+"""Public readiness is independent from optional local managed-runtime validation."""
 
 from __future__ import annotations
 
@@ -124,6 +124,7 @@ def test_missing_seat_adapter_remains_explicitly_unavailable() -> None:
     assert status == 78
     assert result["protected_capabilities"] == "unavailable"
     assert result["public_core"] == "independent"
+    assert result["issuer_authorization"] == "not-checked"
 
 
 def test_writable_checkout_cannot_supply_the_authoritative_adapter(
@@ -176,9 +177,9 @@ def test_relative_lookup_cannot_select_a_root_owned_program(
 
 @pytest.mark.parametrize(
     ("returncode", "expected"),
-    [(0, "admitted"), (78, "unavailable"), (1, "unavailable")],
+    [(0, "local-runtime-validated"), (78, "unavailable"), (1, "unavailable")],
 )
-def test_admission_comes_only_from_installed_adapter(
+def test_local_runtime_validation_comes_only_from_installed_adapter(
     returncode: int, expected: str
 ) -> None:
     adapter = Path("/immutable/portable-seat-attach")
@@ -192,12 +193,39 @@ def test_admission_comes_only_from_installed_adapter(
     ):
         result, status = environment.protected_capability()
     assert result["protected_capabilities"] == expected
+    assert result["issuer_authorization"] == "not-checked"
+    assert result["public_core"] == "independent"
     assert status == (0 if returncode == 0 else 78)
     assert run.call_args.args == ([str(adapter)],)
     assert run.call_args.kwargs["stdin"] == subprocess.DEVNULL
     assert run.call_args.kwargs["stdout"] == subprocess.DEVNULL
     assert run.call_args.kwargs["stderr"] == subprocess.DEVNULL
     assert run.call_args.kwargs["timeout"] == environment.ADAPTER_TIMEOUT
+
+
+def test_successful_local_attach_does_not_authorize_or_change_practice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # This disposable process exercises the consumer bridge, not supplier
+    # admission. The existing carrier tests cover installed-adapter trust.
+    adapter = tmp_path / "adapter"
+    adapter.write_text("#!/bin/sh\nprintf 'authorization: granted\\n'\nexit 0\n")
+    adapter.chmod(0o700)
+    state = environment.prepare_state(tmp_path)
+    (state / "progress.md").write_text("# Prior learner correction\n")
+    (state / "session-choice.json").write_text('{"mode": "implement"}\n')
+    before = {path.name: path.read_bytes() for path in state.iterdir()}
+    monkeypatch.chdir(tmp_path)
+
+    with patch.object(environment, "installed_adapter", return_value=adapter):
+        result, status = environment.protected_capability()
+
+    assert status == 0
+    assert result["protected_capabilities"] == "local-runtime-validated"
+    assert result["issuer_authorization"] == "not-checked"
+    assert result["public_core"] == "independent"
+    assert "granted" not in json.dumps(result)
+    assert {path.name: path.read_bytes() for path in state.iterdir()} == before
 
 
 def test_hung_adapter_cannot_leave_a_successful_readiness_result() -> None:
@@ -214,6 +242,7 @@ def test_hung_adapter_cannot_leave_a_successful_readiness_result() -> None:
         result, status = environment.protected_capability()
     assert status == 78
     assert result["protected_capabilities"] == "unavailable"
+    assert result["issuer_authorization"] == "not-checked"
 
 
 def test_cli_missing_adapter_is_machine_readable_and_nonzero() -> None:
@@ -225,5 +254,7 @@ def test_cli_missing_adapter_is_machine_readable_and_nonzero() -> None:
         check=False,
     )
     assert process.returncode == 78
-    assert json.loads(process.stdout)["protected_capabilities"] == "unavailable"
+    result = json.loads(process.stdout)
+    assert result["protected_capabilities"] == "unavailable"
+    assert result["issuer_authorization"] == "not-checked"
     assert process.stderr == ""

@@ -16,8 +16,12 @@ storage. A rebuild keeps this directory; a deleted Codespace does not. Keep
 private exports outside Git and push intended source changes to your own fork.
 
 Protected services are optional. `just protected-capability` calls only an
-independently installed `portable-seat-attach` adapter, which validates its own
-admitted runtime. If unavailable, the command says so and exits nonzero. The
+independently installed `portable-seat-attach` adapter. Success reports
+`protected_capabilities: local-runtime-validated`: local runtime bindings
+passed, with `issuer_authorization: not-checked`. This does not authenticate a
+learner, establish a current issuer grant, or check server-side withdrawal.
+Missing, untrusted, refused or hung adapters report `unavailable` and exit78;
+public practice remains independent. The
 public packet supplies no identity endpoint, wrapping token or age identity.
 Authenticate only through the owning service's supported seat workflow after
 startup. Short-lived wrapping tokens must be minted after the environment is
