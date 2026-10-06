@@ -62,36 +62,41 @@ env-test: deps-sync
 # ──────────────────────────────────────────────
 
 # Run all tests
+[positional-arguments]
 test *args: deps-sync
-    uv run pytest {{ args }}
+    uv run pytest "$@"
 
 # Run tests for a specific topic
 test-topic topic:
     uv run pytest tests/{{ topic }}/ -v
 
 # Run tests in watch mode (re-runs on file change)
+[positional-arguments]
 test-watch *args:
-    watchexec -e py -- uv run pytest {{ args }}
+    watchexec -e py -- uv run pytest "$@"
 
 # Study a topic: run tests in watch mode for a specific topic
 study topic:
     watchexec -e py -w src/algo/{{ topic }} -w tests/{{ topic }} -- uv run pytest tests/{{ topic }}/ -v
 
 # Run concept module tests (installs optional deps)
+[positional-arguments]
 test-concepts *args:
-    uv run --extra concepts pytest tests/concepts/ -v {{ args }}
+    uv run --extra concepts pytest tests/concepts/ -v "$@"
 
 # Study a concept: run concept tests in watch mode
 study-concept:
     watchexec -e py -w src/concepts -w tests/concepts -- uv run --extra concepts pytest tests/concepts/ -v
 
 # Run benchmark suite
+[positional-arguments]
 bench *args:
-    uv run pytest -m bench --benchmark-enable --benchmark-sort=fullname {{ args }}
+    uv run pytest -m bench --benchmark-enable --benchmark-sort=fullname "$@"
 
 # Run tests with coverage (statement + branch) over the algo + concept sources
+[positional-arguments]
 cov *args:
-    uv run pytest --cov=src/algo --cov=src/concepts --cov-branch --cov-report=term-missing {{ args }}
+    uv run pytest --cov=src/algo --cov=src/concepts --cov-branch --cov-report=term-missing "$@"
 
 # ──────────────────────────────────────────────
 # Code quality
