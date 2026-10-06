@@ -1,7 +1,7 @@
 """Public environment readiness and an optional installed seat-adapter bridge.
 
-Setup preserves candidate files. Checks are offline and never authenticate a
-seat, read a token, or infer admission from a local readiness marker.
+Setup preserves candidate files. Public checks are offline. The optional adapter
+validates local runtime bindings; it does not establish issuer authorization.
 """
 
 from __future__ import annotations
@@ -149,12 +149,18 @@ def installed_adapter() -> Path | None:
 
 
 def protected_capability() -> tuple[dict[str, object], int]:
+    # A successful attach validates local managed-runtime coordination. It
+    # does not authenticate a subject or recheck issuer grants/withdrawal.
+    boundary = {
+        "issuer_authorization": "not-checked",
+        "public_core": "independent",
+    }
     adapter = installed_adapter()
     if adapter is None:
         return {
+            **boundary,
             "protected_capabilities": "unavailable",
             "reason": "independently installed portable-seat-attach adapter absent or untrusted",
-            "public_core": "independent",
         }, 78
     try:
         result = subprocess.run(
@@ -168,18 +174,18 @@ def protected_capability() -> tuple[dict[str, object], int]:
         )
     except OSError, subprocess.TimeoutExpired:
         return {
+            **boundary,
             "protected_capabilities": "unavailable",
             "reason": "installed adapter failed or exceeded its readiness deadline",
-            "public_core": "independent",
         }, 78
     return {
-        "protected_capabilities": "admitted"
+        **boundary,
+        "protected_capabilities": "local-runtime-validated"
         if result.returncode == 0
         else "unavailable",
-        "reason": "installed adapter accepted runtime"
+        "reason": "installed adapter validated local runtime bindings; issuer authorization was not checked"
         if result.returncode == 0
-        else "installed adapter did not admit runtime",
-        "public_core": "independent",
+        else "installed adapter did not validate local runtime bindings",
     }, 0 if result.returncode == 0 else 78
 
 
