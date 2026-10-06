@@ -4,7 +4,7 @@ set dotenv-load := false
 bazel := env_var_or_default("BAZEL_BIN", "bazelisk")
 export USE_BAZEL_VERSION := `cat .bazelversion`
 
-hook_mirror := "https://raw.githubusercontent.com/DSA-Woodshed/.github/83f555ca5cb0ee01fa35cb6947f1b0e80228d332/githooks"
+hook_mirror := "https://raw.githubusercontent.com/DSA-Woodshed/.github/76f30db016acea5c2de6f0aadd6fca5dc2989904/githooks"
 
 default:
     @just --list
@@ -16,12 +16,14 @@ deps-sync:
 # Prepare a fork checkout and the locked product environment.
 setup: hooks-install deps-sync env-setup
 
-# Install the organization mirror while keeping the global hook layer chained.
+# Apply absent contributor defaults only in an independently verified owned fork.
 hooks-install:
-    git config core.hooksPath .githooks
-    git config remote.pushDefault origin
-    @if git remote | grep -qx upstream; then git remote set-url --push upstream DISABLED-fork-first; fi
-    @if [ "$(git config --get commit.gpgsign || true)" != true ]; then printf 'Configure signed commits before contributing; see CONTRIBUTING.md\n'; fi
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source .githooks/_lib.sh
+    canonical_repo=$(python3 -c 'import json; print(json.load(open("tinyland.repo.json"))["repo"]["github"])' 2>/dev/null || true)
+    woodshed_install_hooks .githooks "$canonical_repo"
+    if [ "$(git config --get commit.gpgsign || true)" != true ]; then printf 'Configure signed commits before contributing; see CONTRIBUTING.md\n'; fi
 
 # Compare exact bytes with the organization mirror; a file:// fixture works offline.
 hooks-check mirror=hook_mirror:
@@ -140,7 +142,7 @@ migration-readiness:
 codespaces-acceptance-plan branch repository="":
     uv run python scripts/codespaces_acceptance.py plan --branch {{ quote(branch) }} --repository {{ quote(repository) }}
 
-# Assert the exact repo and SHA from inside a genuinely new Codespace
+# Verify exact fork/SHA/clean source; optional CLI metadata does not prove editor attachment
 codespaces-acceptance-verify expected_sha repository:
     uv run python scripts/codespaces_acceptance.py verify --expected-sha {{ quote(expected_sha) }} --repository {{ quote(repository) }}
 

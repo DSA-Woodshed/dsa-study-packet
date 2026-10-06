@@ -136,6 +136,44 @@ def test_writable_checkout_cannot_supply_the_authoritative_adapter(
         assert environment.installed_adapter() is None
 
 
+def test_user_owned_alias_cannot_claim_admission_from_a_root_owned_program(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = tmp_path / "portable-seat-attach"
+    adapter.symlink_to("/usr/bin/true")
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    result, status = environment.protected_capability()
+
+    assert status == 78
+    assert result["protected_capabilities"] == "unavailable"
+
+
+def test_root_owned_symlink_carrier_and_ancestry_qualify() -> None:
+    # Use the operating system's genuine root-managed symlink chain; only the
+    # command lookup is substituted. This checks installation, not admission.
+    carrier = Path("/bin/sh")
+    with patch.object(environment.shutil, "which", return_value=str(carrier)):
+        assert environment.installed_adapter() == carrier.resolve(strict=True)
+
+
+def test_replaceable_parent_alias_cannot_select_a_root_owned_program(
+    tmp_path: Path,
+) -> None:
+    parent = tmp_path / "system-bin"
+    parent.symlink_to("/usr/bin", target_is_directory=True)
+    with patch.object(environment.shutil, "which", return_value=str(parent / "true")):
+        assert environment.installed_adapter() is None
+
+
+def test_relative_lookup_cannot_select_a_root_owned_program(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir("/")
+    with patch.object(environment.shutil, "which", return_value="usr/bin/true"):
+        assert environment.installed_adapter() is None
+
+
 @pytest.mark.parametrize(
     ("returncode", "expected"),
     [(0, "admitted"), (78, "unavailable"), (1, "unavailable")],

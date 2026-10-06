@@ -46,6 +46,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from catalog import selection_error
 from core42 import PRACTICE_TARGETS
+from environment import prepare_state
 from python_candidate_target import selected_target
 from rep_schema import RepLineError, parse_rep_line
 from strip_solution import (
@@ -278,9 +279,11 @@ def _confined_directory(root: Path, path: Path, label: str, *, create: bool) -> 
 
 
 def _state_dir(root: Path) -> Path:
-    return _confined_directory(
-        root, root / STATE_REL, "private practice state", create=True
-    )
+    _confined_directory(root, root / STATE_REL, "private practice state", create=False)
+    try:
+        return prepare_state(root)
+    except (OSError, ValueError) as exc:
+        raise PracticeError(f"cannot prepare private practice state: {exc}") from exc
 
 
 def _state_file(root: Path, name: str) -> Path:

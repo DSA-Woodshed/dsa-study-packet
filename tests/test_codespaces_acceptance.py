@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -132,12 +134,98 @@ def test_verify_checks_exact_selected_source_without_requiring_an_agent(
     assert f"PRODUCT_REPOSITORY: {PRODUCT}" in lines
     assert f"SOURCE_REPOSITORY: {SOURCE}" in lines
     assert "REPOSITORY_CHECKOUT: PASS" in lines
+    assert "EDITOR_CLI: METADATA_RECORDED" in lines
+    assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
     assert "WORKTREE: CLEAN (ignored private state excluded)" in lines
     assert "REPOSITORY_WRITE_AUTH: NOT_TESTED" in lines
     assert "HOSTED_PRACTICE_ACCEPTANCE: NOT_TESTED" in lines
     assert "FEEDBACK_PROVIDER: OPTIONAL_NOT_TESTED" in lines
     assert "PROTECTED_CAPABILITY: OPTIONAL_NOT_TESTED" in lines
     assert not any("COPILOT" in line for line in lines)
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["COMMAND: MISSING (code)", "COMMAND: FAILED (code)", "COMMAND: TIMED_OUT (code)"],
+)
+def test_unavailable_editor_does_not_hide_valid_source_or_claim_attachment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reason: str
+) -> None:
+    outputs = _outputs()
+
+    def capture(command: list[str], _cwd: Path) -> str:
+        if command[0] == "code":
+            raise acceptance.AcceptanceError(reason)
+        return outputs[tuple(command)]
+
+    monkeypatch.setattr(acceptance, "_capture", capture)
+    lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+    assert "REPOSITORY_CHECKOUT: PASS" in lines
+    assert "EDITOR_CLI: UNAVAILABLE" in lines
+    assert f"EDITOR_CLI_REASON: {reason}" in lines
+    assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
+    assert "EXTENSION_LIST: RECORDED" not in lines
+
+
+@pytest.mark.parametrize(
+    "output", ["", "Command is only available inside a VS Code terminal."]
+)
+def test_success_exit_without_editor_version_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, output: str
+) -> None:
+    outputs = _outputs()
+    outputs[("code", "--version")] = output
+    _mock_capture(monkeypatch, outputs)
+    lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+    assert "REPOSITORY_CHECKOUT: PASS" in lines
+    assert "EDITOR_CLI: UNAVAILABLE" in lines
+    assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
+
+
+def test_nonexecutable_editor_has_an_optional_unavailable_diagnostic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = tmp_path / "code"
+    executable.write_text("owned nonexecutable fixture\n")
+    executable.chmod(0o600)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    outputs = _outputs()
+    real_capture: Callable[[list[str], Path], str] = acceptance._capture
+
+    def capture(command: list[str], cwd: Path) -> str:
+        if command[0] == "code":
+            return real_capture(command, cwd)
+        return outputs[tuple(command)]
+
+    monkeypatch.setattr(acceptance, "_capture", capture)
+    lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+    assert "REPOSITORY_CHECKOUT: PASS" in lines
+    assert "EDITOR_CLI: UNAVAILABLE" in lines
+    assert any(
+        line.startswith("EDITOR_CLI_REASON: COMMAND: UNAVAILABLE") for line in lines
+    )
+    assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
+
+
+def test_capture_bounds_an_owned_stalled_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(acceptance, "COMMAND_TIMEOUT_SECONDS", 0.1)
+    with pytest.raises(acceptance.AcceptanceError, match="COMMAND: TIMED_OUT"):
+        acceptance._capture(
+            [sys.executable, "-c", "import time; time.sleep(10)"], tmp_path
+        )
+
+
+def test_required_source_command_timeout_is_still_fatal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def stalled(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired("git", acceptance.COMMAND_TIMEOUT_SECONDS)
+
+    monkeypatch.setattr(acceptance.subprocess, "run", stalled)
+    with pytest.raises(acceptance.AcceptanceError, match="COMMAND: TIMED_OUT \\(git"):
+        acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
 
 
 def test_verify_rejects_another_origin_even_when_the_sha_matches(

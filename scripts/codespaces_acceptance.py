@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 DISPOSABLE_BRANCH_RE = re.compile(r"codespaces-acceptance-[A-Za-z0-9._-]+")
 REPOSITORY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+")
+CODE_VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?")
+COMMAND_TIMEOUT_SECONDS = 30
 
 
 class AcceptanceError(RuntimeError):
@@ -45,11 +47,17 @@ def _capture(command: Sequence[str], cwd: Path) -> str:
             check=True,
             text=True,
             capture_output=True,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         )
     except FileNotFoundError as exc:
         raise AcceptanceError(
             f"COMMAND: MISSING ({command[0]})\nNEXT: install it on the machine "
             "running this acceptance step"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise AcceptanceError(
+            f"COMMAND: TIMED_OUT ({command[0]}; {COMMAND_TIMEOUT_SECONDS}s)\n"
+            "NEXT: check the command's connection or editor context, then rerun"
         ) from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() or exc.stdout.strip() or "no command output"
@@ -57,7 +65,35 @@ def _capture(command: Sequence[str], cwd: Path) -> str:
             f"COMMAND: FAILED ({' '.join(command)})\nOBSERVED: {detail}\n"
             "NEXT: fix authentication or the named ref, then rerun"
         ) from exc
+    except OSError as exc:
+        raise AcceptanceError(
+            f"COMMAND: UNAVAILABLE ({command[0]}; errno={exc.errno})\n"
+            "NEXT: check executable permissions and host command support, then rerun"
+        ) from exc
     return result.stdout.strip()
+
+
+def _editor_metadata(root: Path) -> list[str]:
+    """Record optional CLI metadata without treating it as editor attachment."""
+    try:
+        version_lines = _capture(["code", "--version"], root).splitlines()
+        if not version_lines or CODE_VERSION_RE.fullmatch(version_lines[0]) is None:
+            return [
+                "EDITOR_CLI: UNAVAILABLE",
+                "EDITOR_CLI_REASON: version output did not identify VS Code",
+            ]
+        extensions = _capture(["code", "--list-extensions", "--show-versions"], root)
+    except AcceptanceError as exc:
+        return [
+            "EDITOR_CLI: UNAVAILABLE",
+            f"EDITOR_CLI_REASON: {str(exc).splitlines()[0]}",
+        ]
+    return [
+        "EDITOR_CLI: METADATA_RECORDED",
+        f"VS_CODE_VERSION: {version_lines[0]}",
+        "EXTENSION_LIST: RECORDED",
+        *[f"EXTENSION: {line}" for line in extensions.splitlines() if line],
+    ]
 
 
 def _valid_sha(value: str, label: str) -> str:
@@ -233,8 +269,6 @@ def verify(
 
     product_slug, source_slug = _true_fork(root, source_slug)
 
-    code_version = _capture(["code", "--version"], root).splitlines()[0]
-    extensions = _capture(["code", "--list-extensions", "--show-versions"], root)
     return [
         f"PRODUCT_REPOSITORY: {product_slug}",
         f"SOURCE_REPOSITORY: {source_slug}",
@@ -244,14 +278,14 @@ def verify(
         f"CHECKOUT_SHA: {checkout_sha}",
         "WORKTREE: CLEAN (ignored private state excluded)",
         "REPOSITORY_CHECKOUT: PASS",
-        f"VS_CODE_VERSION: {code_version}",
-        "EXTENSION_LIST: RECORDED",
-        *[f"EXTENSION: {line}" for line in extensions.splitlines() if line],
+        *_editor_metadata(root),
+        "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED",
         "REPOSITORY_WRITE_AUTH: NOT_TESTED",
         "HOSTED_PRACTICE_ACCEPTANCE: NOT_TESTED",
         "FEEDBACK_PROVIDER: OPTIONAL_NOT_TESTED",
         "PROTECTED_CAPABILITY: OPTIONAL_NOT_TESTED",
-        "NEXT: run the source-native practice and persistence acceptance; "
+        "NEXT: attach the supported editor and verify the candidate files open; "
+        "run the source-native practice and persistence acceptance; "
         "optional feedback and protected capabilities require their own selected "
         "evidence. Remove the disposable Codespace when done.",
     ]
