@@ -28,25 +28,22 @@
           ];
 
           shellHook = ''
-            # Create venv if it doesn't exist
-            if [ ! -d .venv ]; then
-              echo "Creating virtual environment..."
-              uv venv --python ${python}/bin/python
+            if just deps-sync && source .venv/bin/activate; then
+              echo ""
+              echo "dsa-study-packet dev shell"
+              echo "  python : $(python --version)"
+              echo "  uv     : $(uv --version)"
+              echo "  just   : $(just --version)"
+              echo ""
+              echo "Run 'just' to see available commands."
+            else
+              dsa_setup_status=$?
+              printf 'Locked development setup failed; retry with just deps-sync.\n' >&2
+              case $- in
+                *i*) ;;
+                *) exit "$dsa_setup_status" ;;
+              esac
             fi
-
-            # Activate venv
-            source .venv/bin/activate
-
-            # Sync dev deps
-            uv sync --all-extras 2>/dev/null || uv pip install -e ".[dev]"
-
-            echo ""
-            echo "dsa-study-packet dev shell"
-            echo "  python : $(python --version)"
-            echo "  uv     : $(uv --version)"
-            echo "  just   : $(just --version)"
-            echo ""
-            echo "Run 'just' to see available commands."
           '';
 
           env = {
