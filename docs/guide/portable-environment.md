@@ -51,3 +51,14 @@ attachment. Candidate-tab opening and native Codespaces editor authorization
 remain unverified by this run. These public lifecycle results do not commission
 an identity issuer or an optional feedback provider. GitHub CLI SSH automation
 uses a login shell (`bash -l`) so it loads the normal user tool paths.
+
+On 2026-10-06, source `b939b85a62a2b41e705ac3bb87c52716dd851322`, whose
+tree matches canonical `a45986322db556f383b99ab227f90779096b71ef`, passed a
+separate native editor check in VS Code 1.140.0 with the official Codespaces
+extension. After supported GitHub sign-in and a user window reload,
+`just practice-open` opened the existing Two Sum candidate source and candidate
+test. Both files were verified in the connected editor. All 13 private practice
+files retained identical hashes, and tracked source remained unchanged. Opening
+the files ran no tests and started no new session. This result covers native
+editor attachment and candidate-tab opening; protected identity and feedback
+services still require separate commissioning.
