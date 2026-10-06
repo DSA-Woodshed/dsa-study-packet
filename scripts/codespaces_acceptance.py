@@ -65,6 +65,11 @@ def _capture(command: Sequence[str], cwd: Path) -> str:
             f"COMMAND: FAILED ({' '.join(command)})\nOBSERVED: {detail}\n"
             "NEXT: fix authentication or the named ref, then rerun"
         ) from exc
+    except OSError as exc:
+        raise AcceptanceError(
+            f"COMMAND: UNAVAILABLE ({command[0]}; errno={exc.errno})\n"
+            "NEXT: check executable permissions and host command support, then rerun"
+        ) from exc
     return result.stdout.strip()
 
 

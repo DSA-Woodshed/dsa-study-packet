@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -178,6 +179,31 @@ def test_success_exit_without_editor_version_is_unavailable(
     lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
     assert "REPOSITORY_CHECKOUT: PASS" in lines
     assert "EDITOR_CLI: UNAVAILABLE" in lines
+    assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
+
+
+def test_nonexecutable_editor_has_an_optional_unavailable_diagnostic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = tmp_path / "code"
+    executable.write_text("owned nonexecutable fixture\n")
+    executable.chmod(0o600)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    outputs = _outputs()
+    real_capture: Callable[[list[str], Path], str] = acceptance._capture
+
+    def capture(command: list[str], cwd: Path) -> str:
+        if command[0] == "code":
+            return real_capture(command, cwd)
+        return outputs[tuple(command)]
+
+    monkeypatch.setattr(acceptance, "_capture", capture)
+    lines = acceptance.verify(_root(tmp_path), SHA, ENV, SOURCE)
+    assert "REPOSITORY_CHECKOUT: PASS" in lines
+    assert "EDITOR_CLI: UNAVAILABLE" in lines
+    assert any(
+        line.startswith("EDITOR_CLI_REASON: COMMAND: UNAVAILABLE") for line in lines
+    )
     assert "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED" in lines
 
 
