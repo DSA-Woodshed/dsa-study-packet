@@ -26,7 +26,7 @@ LOOP = (
 PUBLISHING = (
     ("pandoc", "'just pdf-all' reference-sheet PDFs (optional)"),
     ("tectonic", "'just packet' booklet PDF (optional)"),
-    ("bazelisk", "'just remote-*' cache-first builds (optional)"),
+    ("bazelisk", "'just packet' and public maintainer checks (optional)"),
 )
 
 
