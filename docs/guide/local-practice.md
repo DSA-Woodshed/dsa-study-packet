@@ -11,7 +11,7 @@ Codespaces; a native install needs only `uv` and `just` for the core flow.
 ## Set up
 
 ```bash
-git clone https://github.com/Jesssullivan/dsa-study-packet.git
+git clone https://github.com/DSA-Woodshed/dsa-study-packet.git
 cd dsa-study-packet
 ```
 
@@ -28,7 +28,7 @@ Choose one lane:
     [just](https://just.systems/), then run:
 
     ```bash
-    uv sync --extra dev
+    just setup
     just doctor
     ```
 
@@ -38,22 +38,16 @@ Choose one lane:
 
 ## Start a rep
 
-With Copilot Chat installed and signed in, enter `/comments`. It starts a rep
-whose reasoning lives in ordinary source comments or docstrings, with no
-required labels or prefixes. Add a topic and problem to choose one:
-
-```text
-/comments arrays two_sum
-```
-
-If named vocabulary helps you think, `/reacto`, `/clarp`, and `/umpire` start
-the same loop with optional labels. Copilot is optional; use the conductor
-directly:
+Choose an intent, a time budget, and an activity through the guided session,
+or start one rep directly. Basic practice needs no private service:
 
 ```bash
+just session
 just practice-start comments
 just practice-start comments arrays two_sum
 ```
+
+Optional `reacto`, `clarp`, and `umpire` labels support the same loop.
 
 To study one exact pair without starting a rep, open its committed snapshot:
 
@@ -69,8 +63,8 @@ just practice-start-tests linked_lists lru_cache
 ```
 
 Your source and test file open under `.challenges/workspace/`. Write ordinary
-source comments or docstrings in your own words, save, then enter `/continue`
-or run `just practice-next`. The comments belong in the file, not Chat, and
+source comments or docstrings in your own words, save, then run
+`just practice-next`. The comments belong in the source file and
 need no prefixes, minimum count, or gate deletion. Implement the solution and
 add focused tests. If the tabs do not open, the command prints their paths;
 `just practice-open` tries again.
@@ -94,11 +88,6 @@ pytest process group. Do not launch background daemons. Receipts detect
 ordinary staleness and incomplete runs; they are workflow evidence, not a
 tamper-resistant boundary.
 
-Claude Code, Codex, and other external agents are optional. Install,
-authenticate, and launch the one you already use; the repository does not
-start one or require its credentials. A direct `just` session works without
-any agent.
-
-Ask the resident interviewer for an untimed conversational rep when you want
-less editor pressure. Choose a timed board-style rep only when speaking under
-a clock is the skill you mean to practice.
+Optional agent providers and their settings belong on the personal
+contribution fork. Restore only the tools you choose; they route through the
+same canonical session commands. A terminal session works without an agent.

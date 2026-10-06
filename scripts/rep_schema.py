@@ -1,7 +1,7 @@
 """Validate the extended rep-log line convention (non-blocking by design).
 
-The resident-interviewer persona (AGENTS.md) atomically closes each non-editor
-rep with a `just rep-finish` log-and-review update. The extended convention is:
+The session dispatcher and `just rep-finish` atomically pair a non-editor
+rep log with its review update. The optional scored convention is:
 
     <mode> <topic>/<problem> C<0-2> L<0-2> A<0-2> R<0-2> P<0-2> h<0-5> <one fix>
 
@@ -9,6 +9,9 @@ rep with a `just rep-finish` log-and-review update. The extended convention is:
 `C L A R P` are the sheet-10 SS5 rubric rows, each scored 0-2. `h<n>` is the
 highest hint level used (0-5). The trailing free text is the one fix to carry
 into the next rep.
+
+Every explicit mode also accepts `<mode> <topic>/<problem> fix: <one fix>`.
+That compact form leaves scores and hint level absent; it never invents them.
 
 Lines logged before this convention existed may omit the leading `mode`
 token, the trailing `h<n>` token, or both; those still parse as valid
@@ -89,11 +92,11 @@ def parse_rep_line(line: str) -> RepLine:
     if not _SLUG_RE.fullmatch(topic) or not _SLUG_RE.fullmatch(problem):
         raise RepLineError(f"malformed topic/problem slug: {slug!r}")
 
-    # Editor-first closeout intentionally asks for one fix, not a five-row
-    # scorecard. Its compact line remains structured by mode and exact slug.
+    # A closeout asks for one fix. A scored rubric remains optional for any
+    # mode; a compact line records no scores or hints that were not supplied.
     if tokens and re.fullmatch(r"C\d+", tokens[0]) is None:
-        if mode not in EDITOR_MODES:
-            raise RepLineError("compact lines are only valid for editor modes")
+        if mode not in MODES:
+            raise RepLineError("compact lines require an explicit practice mode")
         return RepLine(
             mode=mode,
             topic=topic,

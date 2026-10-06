@@ -2,12 +2,16 @@
   "schema_version": 1,
   "repo": {
     "name": "dsa-study-packet",
-    "github": "Jesssullivan/dsa-study-packet",
+    "github": "DSA-Woodshed/dsa-study-packet",
     "description": "Company-neutral technical interview practice packet: source of truth for practice code, tests, reference sheets, and printable material."
   },
   "taxonomy": {
     "primary_role": "content-authority",
-    "layers": ["practice-harness", "docs-source", "print-material"]
+    "layers": [
+      "practice-harness",
+      "docs-source",
+      "print-material"
+    ]
   },
   "boundaries": {
     "owns_content": true,

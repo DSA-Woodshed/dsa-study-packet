@@ -15,6 +15,9 @@ from urllib.parse import quote
 ROOT = Path(__file__).resolve().parents[1]
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 DISPOSABLE_BRANCH_RE = re.compile(r"codespaces-acceptance-[A-Za-z0-9._-]+")
+REPOSITORY_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+")
+CODE_VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?")
+COMMAND_TIMEOUT_SECONDS = 30
 
 
 class AcceptanceError(RuntimeError):
@@ -44,11 +47,17 @@ def _capture(command: Sequence[str], cwd: Path) -> str:
             check=True,
             text=True,
             capture_output=True,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         )
     except FileNotFoundError as exc:
         raise AcceptanceError(
             f"COMMAND: MISSING ({command[0]})\nNEXT: install it on the machine "
             "running this acceptance step"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise AcceptanceError(
+            f"COMMAND: TIMED_OUT ({command[0]}; {COMMAND_TIMEOUT_SECONDS}s)\n"
+            "NEXT: check the command's connection or editor context, then rerun"
         ) from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() or exc.stdout.strip() or "no command output"
@@ -56,7 +65,35 @@ def _capture(command: Sequence[str], cwd: Path) -> str:
             f"COMMAND: FAILED ({' '.join(command)})\nOBSERVED: {detail}\n"
             "NEXT: fix authentication or the named ref, then rerun"
         ) from exc
+    except OSError as exc:
+        raise AcceptanceError(
+            f"COMMAND: UNAVAILABLE ({command[0]}; errno={exc.errno})\n"
+            "NEXT: check executable permissions and host command support, then rerun"
+        ) from exc
     return result.stdout.strip()
+
+
+def _editor_metadata(root: Path) -> list[str]:
+    """Record optional CLI metadata without treating it as editor attachment."""
+    try:
+        version_lines = _capture(["code", "--version"], root).splitlines()
+        if not version_lines or CODE_VERSION_RE.fullmatch(version_lines[0]) is None:
+            return [
+                "EDITOR_CLI: UNAVAILABLE",
+                "EDITOR_CLI_REASON: version output did not identify VS Code",
+            ]
+        extensions = _capture(["code", "--list-extensions", "--show-versions"], root)
+    except AcceptanceError as exc:
+        return [
+            "EDITOR_CLI: UNAVAILABLE",
+            f"EDITOR_CLI_REASON: {str(exc).splitlines()[0]}",
+        ]
+    return [
+        "EDITOR_CLI: METADATA_RECORDED",
+        f"VS_CODE_VERSION: {version_lines[0]}",
+        "EXTENSION_LIST: RECORDED",
+        *[f"EXTENSION: {line}" for line in extensions.splitlines() if line],
+    ]
 
 
 def _valid_sha(value: str, label: str) -> str:
@@ -92,17 +129,73 @@ def _remote_slug(remote: str) -> str | None:
     return None
 
 
-def plan(root: Path, branch: str) -> list[str]:
-    """Resolve a disposable remote branch and return exact creation evidence."""
-    slug = _repository_slug(root)
+def _valid_repository(value: str, label: str) -> str:
+    if REPOSITORY_RE.fullmatch(value) is None:
+        raise AcceptanceError(
+            f"{label}: INVALID\nEXPECTED: GitHub owner/repository\n"
+            "NEXT: select the personal contribution fork"
+        )
+    return value
+
+
+def _repository_record(root: Path, slug: str) -> dict[str, object]:
+    try:
+        record = json.loads(_capture(["gh", "api", f"repos/{slug}"], root))
+    except json.JSONDecodeError as exc:
+        raise AcceptanceError("REPOSITORY_METADATA: INVALID_JSON") from exc
+    if (
+        not isinstance(record, dict)
+        or type(record.get("id")) is not int
+        or record["id"] <= 0
+        or not isinstance(record.get("full_name"), str)
+        or REPOSITORY_RE.fullmatch(record["full_name"]) is None
+    ):
+        raise AcceptanceError("REPOSITORY_METADATA: INVALID_IDENTITY")
+    return record
+
+
+def _true_fork(root: Path, source_slug: str) -> tuple[str, str]:
+    """Prove the selected source is a real fork of the product's stable ID."""
+    product_slug = _valid_repository(_repository_slug(root), "PRODUCT_REPOSITORY")
+    source_slug = _valid_repository(source_slug, "SOURCE_REPOSITORY")
+    product = _repository_record(root, product_slug)
+    source = _repository_record(root, source_slug)
+    parent = source.get("parent")
+    if (
+        source.get("fork") is not True
+        or not isinstance(parent, dict)
+        or parent.get("id") != product["id"]
+        or str(parent.get("full_name", "")).casefold()
+        != str(product["full_name"]).casefold()
+        or str(source["full_name"]).casefold() != source_slug.casefold()
+    ):
+        raise AcceptanceError(
+            "SOURCE_RELATION: NOT_PRODUCT_FORK\n"
+            f"PRODUCT_REPOSITORY: {product['full_name']}\n"
+            "NEXT: fork the canonical product instead of copying a repository"
+        )
+    return str(product["full_name"]), str(source["full_name"])
+
+
+def plan(root: Path, branch: str, repository: str | None = None) -> list[str]:
+    """Resolve a branch on the personal fork, without pushing to the product."""
     branch = _valid_disposable_branch(branch)
+    source_slug = repository or _remote_slug(
+        _capture(["git", "remote", "get-url", "origin"], root)
+    )
+    if source_slug is None:
+        raise AcceptanceError(
+            "SOURCE_REPOSITORY: UNRECOGNIZED\n"
+            "NEXT: pass --repository owner/personal-fork or repair origin"
+        )
+    product_slug, source_slug = _true_fork(root, source_slug)
     encoded_branch = quote(branch, safe="")
     expected_sha = _valid_sha(
         _capture(
             [
                 "gh",
                 "api",
-                f"repos/{slug}/branches/{encoded_branch}",
+                f"repos/{source_slug}/branches/{encoded_branch}",
                 "--jq",
                 ".commit.sha",
             ],
@@ -110,23 +203,28 @@ def plan(root: Path, branch: str) -> list[str]:
         ),
         "EXPECTED_SHA",
     )
-    create_url = f"https://codespaces.new/{slug}/tree/{encoded_branch}"
+    create_url = f"https://codespaces.new/{source_slug}/tree/{encoded_branch}"
     return [
-        f"REPOSITORY: {slug}",
+        f"PRODUCT_REPOSITORY: {product_slug}",
+        f"SOURCE_REPOSITORY: {source_slug}",
+        "SOURCE_RELATION: TRUE_PRODUCT_FORK",
         f"BRANCH: {branch}",
         f"EXPECTED_SHA: {expected_sha}",
         f"CREATE_URL: {create_url}",
         "REPOSITORY_API_AUTH: PASS",
-        "COPILOT_SIGN_IN: NOT_TESTED",
-        "COPILOT_ENTITLEMENT: NOT_TESTED",
+        "HOSTED_ACCEPTANCE: NOT_TESTED",
+        "FEEDBACK_PROVIDER: OPTIONAL_NOT_TESTED",
+        "PROTECTED_CAPABILITY: OPTIONAL_NOT_TESTED",
         "NEXT: use CREATE_URL to create a new Codespace, then run "
-        f"`just codespaces-acceptance-verify {expected_sha}` inside it",
+        f"`just codespaces-acceptance-verify {expected_sha} {source_slug}` inside it",
     ]
 
 
-def verify(root: Path, expected_sha: str, env: Mapping[str, str]) -> list[str]:
-    """Verify checkout identity without claiming Copilot UI account state."""
-    slug = _repository_slug(root)
+def verify(
+    root: Path, expected_sha: str, env: Mapping[str, str], repository: str
+) -> list[str]:
+    """Verify exact fork identity and SHA without selecting a feedback provider."""
+    source_slug = _valid_repository(repository, "SOURCE_REPOSITORY")
     expected_sha = _valid_sha(expected_sha, "EXPECTED_SHA")
     if env.get("CODESPACES", "").lower() != "true":
         raise AcceptanceError(
@@ -162,30 +260,34 @@ def verify(root: Path, expected_sha: str, env: Mapping[str, str]) -> list[str]:
 
     remote = _capture(["git", "remote", "get-url", "origin"], root)
     observed_slug = _remote_slug(remote)
-    if observed_slug != slug:
+    if observed_slug is None or observed_slug.casefold() != source_slug.casefold():
         raise AcceptanceError(
             f"ORIGIN_REPOSITORY: {observed_slug or 'UNRECOGNIZED'}\n"
-            f"EXPECTED_REPOSITORY: {slug}\n"
+            f"EXPECTED_REPOSITORY: {source_slug}\n"
             "NEXT: delete this Codespace and create it from the recorded repository URL"
         )
 
-    code_version = _capture(["code", "--version"], root).splitlines()[0]
-    extensions = _capture(["code", "--list-extensions", "--show-versions"], root)
+    product_slug, source_slug = _true_fork(root, source_slug)
+
     return [
-        f"REPOSITORY: {slug}",
+        f"PRODUCT_REPOSITORY: {product_slug}",
+        f"SOURCE_REPOSITORY: {source_slug}",
+        "SOURCE_RELATION: TRUE_PRODUCT_FORK",
         f"CODESPACE_NAME: {codespace_name}",
         f"EXPECTED_SHA: {expected_sha}",
         f"CHECKOUT_SHA: {checkout_sha}",
         "WORKTREE: CLEAN (ignored private state excluded)",
         "REPOSITORY_CHECKOUT: PASS",
-        f"VS_CODE_VERSION: {code_version}",
-        "EXTENSION_LIST: RECORDED",
-        *[f"EXTENSION: {line}" for line in extensions.splitlines() if line],
+        *_editor_metadata(root),
+        "NATIVE_EDITOR_ACCEPTANCE: NOT_TESTED",
         "REPOSITORY_WRITE_AUTH: NOT_TESTED",
-        "COPILOT_SIGN_IN: MANUAL_UI_REQUIRED",
-        "COPILOT_ENTITLEMENT: MANUAL_UI_REQUIRED",
-        "NEXT: confirm Copilot sign-in and entitlement in the editor UI, then run "
-        "the source-native practice acceptance and remove the disposable Codespace",
+        "HOSTED_PRACTICE_ACCEPTANCE: NOT_TESTED",
+        "FEEDBACK_PROVIDER: OPTIONAL_NOT_TESTED",
+        "PROTECTED_CAPABILITY: OPTIONAL_NOT_TESTED",
+        "NEXT: attach the supported editor and verify the candidate files open; "
+        "run the source-native practice and persistence acceptance; "
+        "optional feedback and protected capabilities require their own selected "
+        "evidence. Remove the disposable Codespace when done.",
     ]
 
 
@@ -194,8 +296,12 @@ def _parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--branch", required=True)
+    plan_parser.add_argument("--repository", help="Personal fork; defaults to origin")
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--expected-sha", required=True)
+    verify_parser.add_argument(
+        "--repository", required=True, help="SOURCE_REPOSITORY from the plan"
+    )
     return parser
 
 
@@ -203,9 +309,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         lines = (
-            plan(ROOT, args.branch)
+            plan(ROOT, args.branch, args.repository)
             if args.command == "plan"
-            else verify(ROOT, args.expected_sha, os.environ)
+            else verify(ROOT, args.expected_sha, os.environ, args.repository)
         )
     except AcceptanceError as exc:
         print(str(exc), file=sys.stderr)

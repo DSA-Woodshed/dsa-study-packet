@@ -1,55 +1,26 @@
-# dsa-study-packet
+# The DSA Woodshed
 
-> Company-neutral interview-practice source for code, tests, notes, print
-> material, and the reading site's synced content.
+> Company-neutral Python practice, tested reference implementations, study
+> material, and reproducible print inputs.
 
-## Read Order
+- [Practice contract](TRACK-CONTRACT.md): observable commands, states, candidate
+  ownership, and study snapshots.
+- [Getting started](docs/guide/getting-started.md): first-session walkthrough.
+- [Source of truth](docs/guide/source-of-truth.md): authored inputs, generated
+  artifacts, production site, and private downstream boundary.
+- [Command map](agent-map.md): public interfaces for humans and optional tools.
+- [Contributing](CONTRIBUTING.md): signed fork-first contribution workflow.
 
-1. `AGENTS.md`: agent conduct, practice entry points, public boundary
-2. `TRACK-CONTRACT.md`: provisional, descriptive Python practice-flow contract
-   v2; validation follows G and prompt 75, preceding R, TypeScript, C++, or Rust
-   implementation
-3. `docs/guide/getting-started.md`: first rep walkthrough
-4. `docs/guide/source-of-truth.md`: full layer and public-boundary contract
-5. `CLAUDE.md`: Claude-specific overlay, secondary to `AGENTS.md`
+Start with `just session` to choose an activity and time. Direct editor practice
+uses `just practice-start comments`, followed by `just practice-next`, focused
+tests, and `just practice-finish "one fix"`. `just practice-study topic problem`
+opens immutable reference snapshots without creating a rep.
 
-## Just Command Surface
+Python is the implemented practice track. Cross-language notes are study
+context. Personal agent personas, skills, prompts, and provider settings belong
+on contribution-fork overlays.
 
-- Practice loop: `just practice-start comments|reacto|clarp|umpire [topic
-  problem]`, `just practice-next`, `just practice-test`, `just
-  practice-watch`, `just practice-repl`, `just practice-open`, `just
-  practice-finish "<one fix>"`
-- Study: `just practice-study topic problem` opens immutable committed source
-  and test snapshots without starting a rep.
-- Tests first: `just practice-start-tests topic problem` starts the normal rep
-  with its candidate test tab focused.
-- Talk-only or board: `just interview [topic problem]`, `just rep-finish
-  topic problem "<line>"`
-- Lookup: `just catalog "<words>"`
-- Front doors: `just packet`, `just docs`, `just pdf-all`, `just test`, `just
-  lint`, `just doctor`
-
-## Machine Keys
-
-Practice commands emit UPPERCASE key lines: `STATE`, `SOURCE`, `TEST`,
-`NEXT`, `START`, `QUEUE`, `QUERY`, `MATCH`, `CHOOSE`, `SUGGEST`, `OPENED`,
-`OPEN_FAILED`, `STUDY_SOURCE`, `STUDY_TEST`, `REVISION`, `IMPLEMENT`,
-`TESTS_FIRST`, `FOCUS`, `PRACTICE`, `CLOSED`, `LOGGED`, `SPACED`, `TESTS`.
-Agents relay fields verbatim. `READY`, `CHOOSE`, and `NOT_FOUND` are `STATE`
-values.
-
-## Reading Site
-
-[dsa-woodshed.space](https://dsa-woodshed.space) syncs an exact commit and
-verifies digests before build. Repo owns content; site owns shell.
-
-## Constraints
-
-- Public boundary: this repo is public and company-neutral. Employer names,
-  interviewer notes, request numbers, clearance facts, tailored positioning,
-  and personal rep logs never enter tracked files; see
-  `docs/guide/source-of-truth.md`.
-- Candidate work is private and gitignored. Read it only at an explicit
-  save-and-continue boundary; study snapshots are read-only committed copies.
-- `just` is the only front door; never invoke raw Bazel directly.
-- Agents never write candidate source, tests, or private logs.
+[dsa-woodshed.space](https://dsa-woodshed.space) is the production reading site.
+It consumes one packet revision and verifies source digests before build.
+Reference source, tests, and authored sheets are durable inputs. Candidate
+work, personal logs, credentials, and employer-specific prep stay private.

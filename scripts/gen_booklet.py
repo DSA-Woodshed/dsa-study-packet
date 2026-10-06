@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import ast
 import json
 import re
@@ -57,9 +58,9 @@ TOPIC_TITLES = dict(TOPIC_ORDER)
 APPENDIX_DATA = REF_SHEETS / "appendix-topics.json"
 
 
-def _load_appendix_topics() -> list[dict]:
-    if APPENDIX_DATA.exists():
-        return json.loads(APPENDIX_DATA.read_text())
+def _load_appendix_topics(path: Path = APPENDIX_DATA) -> list[dict]:
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
     return []
 
 
@@ -80,7 +81,7 @@ def _tex_escape(text: str) -> str:
         ("~", r"\textasciitilde{}"),
         ("^", r"\textasciicircum{}"),
         ("\u2014", "---"),  # em-dash
-        ("\u2013", "--"),   # en-dash
+        ("\u2013", "--"),  # en-dash
     ]
     for old, new in replacements:
         text = text.replace(old, new)
@@ -145,7 +146,11 @@ def _parse_docstring_sections(docstring: str) -> dict[str, str]:
     for line in lines[1:]:
         stripped = line.strip()
         # Check for section header like "Problem:" or "When to use:"
-        match = re.match(r"^(Problem|Approach|When to use|Complexity|When To Use):\s*$", stripped, re.IGNORECASE)
+        match = re.match(
+            r"^(Problem|Approach|When to use|Complexity|When To Use):\s*$",
+            stripped,
+            re.IGNORECASE,
+        )
         if match:
             if current_key:
                 sections[current_key] = "\n".join(current_lines).strip()
@@ -181,7 +186,8 @@ def _gen_decision_tree_pages() -> str:
     parts.append(r"\section{Master Decision Tree}")
     parts.append(r"\begin{small}")
     parts.append(r"\begin{verbatim}")
-    parts.append(textwrap.dedent("""\
+    parts.append(
+        textwrap.dedent("""\
     What does the problem ask for?
     |
     +-- FIND / SEARCH
@@ -231,7 +237,8 @@ def _gen_decision_tree_pages() -> str:
     +-- DESIGN A DATA STRUCTURE
         +-- O(1) access + eviction --> LRU Cache
         +-- O(1) min/max retrieval --> Min Stack
-        +-- Sorted insert + search --> bisect / SortedList"""))
+        +-- Sorted insert + search --> bisect / SortedList""")
+    )
     parts.append(r"\end{verbatim}")
     parts.append(r"\end{small}")
 
@@ -269,7 +276,9 @@ def _gen_decision_tree_pages() -> str:
     ]
 
     for kw, first, fallback in keywords:
-        parts.append(f"  {_tex_escape(kw)} & {_tex_escape(first)} & {_tex_escape(fallback)} \\\\")
+        parts.append(
+            f"  {_tex_escape(kw)} & {_tex_escape(first)} & {_tex_escape(fallback)} \\\\"
+        )
 
     parts.append(r"\end{tabular}")
     parts.append(r"\end{small}")
@@ -279,7 +288,8 @@ def _gen_decision_tree_pages() -> str:
     parts.append(r"\section{Data Structure Selection}")
     parts.append(r"\begin{small}")
     parts.append(r"\begin{verbatim}")
-    parts.append(textwrap.dedent("""\
+    parts.append(
+        textwrap.dedent("""\
     Need key -> value?          --> dict
     Need "is X in the set?"     --> set
     Need min/max repeatedly?    --> heapq
@@ -287,7 +297,8 @@ def _gen_decision_tree_pages() -> str:
     Need LIFO?                  --> list (append/pop)
     Need sorted insert+search?  --> bisect / SortedList
     Need merge/find groups?     --> Union-Find
-    Need nearest in 2D/3D?      --> KD-tree or geohash"""))
+    Need nearest in 2D/3D?      --> KD-tree or geohash""")
+    )
     parts.append(r"\end{verbatim}")
     parts.append(r"\end{small}")
 
@@ -295,7 +306,8 @@ def _gen_decision_tree_pages() -> str:
     parts.append(r"\section{When Stuck}")
     parts.append(r"\begin{small}")
     parts.append(r"\begin{verbatim}")
-    parts.append(textwrap.dedent("""\
+    parts.append(
+        textwrap.dedent("""\
     1. INPUT SIZE? --> Determines max acceptable complexity
     2. OUTPUT? --> Boolean=search, Value=optimize, All=backtrack
     3. Can I SORT? --> Unlocks two pointers, binary search, greedy
@@ -303,7 +315,8 @@ def _gen_decision_tree_pages() -> str:
     5. OPTIMAL SUBSTRUCTURE + OVERLAPPING? --> DP
        Optimal substructure only? --> Greedy
     6. GRAPH STRUCTURE? --> BFS/DFS/Dijkstra
-    7. INTERVALS / EVENTS? --> Sort by end (schedule) or start (merge)"""))
+    7. INTERVALS / EVENTS? --> Sort by end (schedule) or start (merge)""")
+    )
     parts.append(r"\end{verbatim}")
     parts.append(r"\end{small}")
 
@@ -536,7 +549,10 @@ def _gen_preamble() -> str:
     """).strip()
 
 
-def main() -> None:
+def render_booklet(
+    algo_src: Path = ALGO_SRC, appendix_data: Path = APPENDIX_DATA
+) -> str:
+    """Render only declared source inputs, independently of the output directory."""
     parts: list[str] = []
 
     # Preamble
@@ -544,9 +560,11 @@ def main() -> None:
     parts.append("")
 
     # Title
-    parts.append(r"\title{\textbf{The DSA Woodshed}\\[0.5em]\large Printable Reference Packet}")
+    parts.append(
+        r"\title{\textbf{The DSA Woodshed}\\[0.5em]\large Printable Reference Packet}"
+    )
     parts.append(r"\author{}")
-    parts.append(r"\date{\today}")
+    parts.append(r"\date{}")
     parts.append("")
     parts.append(r"\begin{document}")
     parts.append(r"\maketitle")
@@ -558,7 +576,7 @@ def main() -> None:
 
     # Algorithm pages by topic
     for topic_dir, topic_title in TOPIC_ORDER:
-        topic_path = ALGO_SRC / topic_dir
+        topic_path = algo_src / topic_dir
         if not topic_path.is_dir():
             continue
 
@@ -575,16 +593,25 @@ def main() -> None:
             parts.append(_gen_algo_page(src_file))
 
     # Appendix: interview topics that round out whiteboard coverage.
-    appendix = _gen_appendix_pages(_load_appendix_topics())
+    appendix = _gen_appendix_pages(_load_appendix_topics(appendix_data))
     if appendix:
         parts.append(appendix)
 
     parts.append(r"\end{document}")
     parts.append("")
 
-    output = ROOT / "booklet.tex"
-    output.write_text("\n".join(parts))
-    print(f"Generated {output} ({len(parts)} lines)")
+    return "\n".join(parts)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--algo-src", type=Path, default=ALGO_SRC)
+    parser.add_argument("--appendix-data", type=Path, default=APPENDIX_DATA)
+    parser.add_argument("--output", type=Path, default=ROOT / "booklet.tex")
+    args = parser.parse_args()
+    rendered = render_booklet(args.algo_src, args.appendix_data)
+    args.output.write_text(rendered, encoding="utf-8")
+    print(f"Generated {args.output} ({len(rendered.splitlines())} lines)")
 
 
 if __name__ == "__main__":

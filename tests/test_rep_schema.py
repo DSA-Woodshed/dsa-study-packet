@@ -53,8 +53,12 @@ def test_legacy_line_with_hint_but_no_mode() -> None:
     assert rep.is_legacy is True
 
 
-@pytest.mark.parametrize("mode", ["comment", "comments", "reacto", "clarp", "umpire"])
-def test_compact_editor_line_accepts_one_free_text_fix(mode: str) -> None:
+@pytest.mark.parametrize(
+    "mode", ["comment", "comments", "reacto", "clarp", "umpire", "talk", "cold", "mock"]
+)
+def test_compact_line_accepts_one_free_text_fix_without_inventing_scores(
+    mode: str,
+) -> None:
     rep = rep_schema.parse_rep_line(
         f"{mode} arrays/two_sum fix: C1 is a note, not a score token"
     )
@@ -65,9 +69,9 @@ def test_compact_editor_line_accepts_one_free_text_fix(mode: str) -> None:
     assert rep.is_legacy is False
 
 
-def test_compact_non_editor_line_is_rejected() -> None:
-    with pytest.raises(rep_schema.RepLineError, match="only valid for editor"):
-        rep_schema.parse_rep_line("talk arrays/two_sum fix: trace the edge")
+def test_compact_line_requires_an_explicit_mode() -> None:
+    with pytest.raises(rep_schema.RepLineError, match="explicit practice mode"):
+        rep_schema.parse_rep_line("arrays/two_sum fix: trace the edge")
 
 
 def test_score_out_of_range_is_rejected() -> None:

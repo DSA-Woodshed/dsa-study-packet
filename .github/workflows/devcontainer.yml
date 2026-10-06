@@ -1,8 +1,8 @@
 name: devcontainer-smoke
 
 # Proves the Linux container, command/state loop, and focused-test receipts work
-# with no secrets. This is not fresh-Codespace, Copilot sign-in, or real VS Code
-# tab acceptance. PRACTICE_NO_OPEN suppresses the GUI; a fake code CLI below
+# with no secrets. Fresh-Codespace and real VS Code tab acceptance are separate
+# evidence. PRACTICE_NO_OPEN suppresses the GUI; a fake code CLI below
 # checks only the exact candidate-tab invocation contract.
 
 on:
@@ -18,29 +18,13 @@ on:
       - "scripts/python_candidate_target.py"
       - "scripts/practice_workspace.py"
       - "scripts/rep_schema.py"
-      - ".github/agents/**"
-      - ".github/hooks/**"
-      - ".github/prompts/**"
-      - "scripts/hooks/**"
+      - "scripts/catalog.py"
+      - "scripts/session.py"
+      - "scripts/environment.py"
       - ".vscode/**"
       - ".github/workflows/devcontainer.yml"
+  # The required smoke context must report for every PR, including docs changes.
   pull_request:
-    paths:
-      - ".devcontainer/**"
-      - "justfile"
-      - "pyproject.toml"
-      - "uv.lock"
-      - "scripts/strip_solution.py"
-      - "scripts/core42.py"
-      - "scripts/python_candidate_target.py"
-      - "scripts/practice_workspace.py"
-      - "scripts/rep_schema.py"
-      - ".github/agents/**"
-      - ".github/hooks/**"
-      - ".github/prompts/**"
-      - "scripts/hooks/**"
-      - ".vscode/**"
-      - ".github/workflows/devcontainer.yml"
   workflow_dispatch:
 
 jobs:
@@ -59,10 +43,7 @@ jobs:
             uv --version
             just --version
             bash .devcontainer/welcome.sh
-            printf '%s\n' '{"hook_event_name":"PreToolUse","tool_name":"runTerminalCommand","tool_input":{"command":"just catalog"}}' |
-              .venv/bin/python scripts/hooks/guard_pretooluse.py |
-              grep -Fqx '{"continue": true}'
-            uv run pytest tests/arrays -q
+            just test tests/arrays -q
             PRACTICE_NO_OPEN=1 just practice-start comments arrays two_sum
             fake_code_bin="$(mktemp -d)"
             cat >"$fake_code_bin/code" <<'FAKE_CODE'

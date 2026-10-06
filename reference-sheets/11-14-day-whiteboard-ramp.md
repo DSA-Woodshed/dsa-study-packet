@@ -19,7 +19,7 @@ in [sheet 10](10-whiteboard-performance-protocol.md).
 2. **Think**: write ordinary source comments or docstrings in your own words,
    then save and explicitly continue.
 3. **Build**: implement in the isolated source and add cases in your test tab.
-4. **Check**: use `/continue` or `just practice-next`, then run `just
+4. **Check**: use `just practice-next`, then run `just
    practice-test` or `just practice-repl`.
 5. **Reflect**: trace one example and reconcile comments with the code.
 6. **Close**: name one win and one fix, then run `just practice-finish "one

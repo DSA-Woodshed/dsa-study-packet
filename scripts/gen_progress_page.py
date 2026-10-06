@@ -8,7 +8,6 @@ Run automatically by mkdocs-gen-files during `mkdocs build`.
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ import mkdocs_gen_files
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core42 import CORE_42
+from study_schedule import _completed
 
 ROOT = Path(__file__).resolve().parent.parent
 PROGRESS_FILE = ROOT / ".challenges" / "progress.md"
@@ -23,17 +23,7 @@ PROGRESS_FILE = ROOT / ".challenges" / "progress.md"
 
 def _parse_progress() -> dict[str, str]:
     """Parse .challenges/progress.md into {topic/problem: date} map."""
-    completed: dict[str, str] = {}
-    if not PROGRESS_FILE.exists():
-        return completed
-    for line in PROGRESS_FILE.read_text().splitlines():
-        m = re.match(
-            r"- \[x\] ([a-z0-9_]+/[a-z0-9_]+)\s*(?:\u2014|:)?\s*(.*)",
-            line,
-        )
-        if m:
-            completed[m.group(1)] = m.group(2).strip()
-    return completed
+    return _completed(PROGRESS_FILE)
 
 
 def _title(name: str) -> str:

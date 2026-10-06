@@ -1,6 +1,6 @@
 name: release
 
-# Cuts a GitHub Release from a CalVer tag (vYYYY.M.PATCH, see CONTRIBUTING.md)
+# Publishes immutable packet/module tags from the authoritative org repository.
 # with the printable booklet and reference-sheet PDFs attached.
 
 on:
@@ -16,6 +16,7 @@ env:
 
 jobs:
   release:
+    if: github.repository == 'DSA-Woodshed/dsa-study-packet'
     name: build + publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -43,12 +44,15 @@ jobs:
           tool: just@1.40.0
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: just deps-sync
+
+      - uses: bazel-contrib/setup-bazel@8cb04a772ab4c1eb984e9c1b493a182e96c5e425
+        with:
+          bazelisk-cache: true
+          repository-cache: true
 
       - name: Build printable booklet
-        run: |
-          uv run python scripts/gen_booklet.py
-          tectonic booklet.tex
+        run: just packet
 
       - name: Build reference-sheet PDFs
         run: just pdf-all

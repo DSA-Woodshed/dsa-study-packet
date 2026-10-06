@@ -1,6 +1,6 @@
 [project]
 name = "dsa-study-packet"
-version = "0.1.0"
+version = "0.2.0"
 description = "Company-neutral DSA and technical interview study guide"
 requires-python = ">=3.14"
 readme = "README.md"

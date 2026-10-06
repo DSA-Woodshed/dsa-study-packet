@@ -185,7 +185,7 @@ def render_day(day_number: int) -> str:
         "## Closeout",
         "",
         "- After each rep: 2 min review, name one win and one fix.",
-        "- Use `/continue` or `just practice-next` whenever the next step is unclear.",
+        "- Use `just practice-next` whenever the next step is unclear.",
         '- Run `just practice-test`, then `just practice-finish "one specific fix"`.',
         "- Board-style practice is optional. Run `just interview` with that rep's printed values when selected.",
         "- No passive playlist. One targeted refresher only if a rep exposed the miss.",

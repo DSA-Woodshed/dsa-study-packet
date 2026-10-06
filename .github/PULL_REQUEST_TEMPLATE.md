@@ -1,5 +1,13 @@
-## Checklist
+## Change
 
-- [ ] `just lint` is green (ruff + mypy + repo guards)
-- [ ] Generated surfaces are regenerated and committed if touched (`just gen-agents` for the persona region; doc counts match `scripts/core42.py`)
-- [ ] No employer/panel-specific or personal content added — the public boundary is respected (`docs/guide/source-of-truth.md`)
+Describe the concrete problem and resulting behavior.
+
+## Validation
+
+Record commands, results, and relevant limits.
+
+- [ ] `just check` passes, including mirror parity and hook fixtures
+- [ ] New authored commits are signed and use conventional subjects
+- [ ] Contribution is from a personal fork to the organization product
+- [ ] Authored source and any generated artifacts agree
+- [ ] No personal agent tooling, credentials, or private prep enters the product

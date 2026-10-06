@@ -21,7 +21,7 @@ just practice-test
 just practice-finish "one fix"
 ```
 
-You can use `/reacto arrays two_sum` in Copilot Chat instead. Replace `reacto`
+You can choose ordinary comments with `just practice-start comments arrays two_sum`. Replace `reacto`
 with `clarp`, `umpire`, or `comments` without changing the save-and-continue
 loop.
 

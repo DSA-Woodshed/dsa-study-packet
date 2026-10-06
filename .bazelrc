@@ -1,20 +1,16 @@
 # Bazel config for dsa_study_packet.
 #
-# Local-default flags ONLY. All remote cache / RBE behavior lives in the
-# kit-owned, endpoint-free .bazelrc.flywheel (build:ci-cached + build:executor-backed),
-# imported below. Endpoints/auth are NEVER committed here -- the
-# gloriousflywheel-bazel wrapper injects --remote_cache=$BAZEL_REMOTE_CACHE at
-# invocation, after a strict preflight. Drive every build through `just remote-*`
-# (or the kit's `just flywheel-*`), never raw bazel. Remote EXECUTION stays
-# opt-in and is NOT enabled for this repo (no proved REAPI target class).
+# Anonymous local builds use public registries and downloaded toolchains.
+# Optional cache/executor configuration stays endpoint-free and is selected by
+# an explicit Just recipe; neither credentials nor RBE are needed for validation.
 
 common --enable_bzlmod
+common --registry=https://raw.githubusercontent.com/xoxd-ai/bazel-registry/c0c85bef791a4602e632c97ba449eadcbfa5ca49
+common --registry=https://bcr.bazel.build
 build --incompatible_strict_action_env
-# Pass the devshell's SOURCE_DATE_EPOCH through to actions so the Bazel-compiled
-# booklet is byte-reproducible and matches `just packet` (both use tectonic in
-# the same nix devshell, which pins SOURCE_DATE_EPOCH). Without this,
-# strict_action_env strips it and the two compile paths embed different dates.
-build --action_env=SOURCE_DATE_EPOCH
+# The neutral booklet has no wall-clock date. Downstream builds also select
+# Tectonic's deterministic mode in the target itself.
+build --action_env=SOURCE_DATE_EPOCH=0
 build --disk_cache=~/.cache/bazel/dsa-study-packet
 test --test_output=errors
 

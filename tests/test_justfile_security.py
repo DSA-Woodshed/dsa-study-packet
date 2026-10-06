@@ -40,6 +40,31 @@ def _captured_uv_args(tmp_path: Path, *recipe_args: str) -> list[str]:
             ("catalog", "anagram, 2 sum and prime"),
             ["scripts/catalog.py", "anagram, 2 sum and prime"],
         ),
+        (("capabilities",), ["scripts/catalog.py", "--json"]),
+        (
+            ("session", "finish", "trace before optimizing; echo bad"),
+            ["scripts/session.py", "finish", "trace before optimizing; echo bad"],
+        ),
+        (
+            (
+                "session",
+                "start",
+                "algorithm/arrays/two_sum",
+                "--mode",
+                "implement",
+                "--minutes",
+                "30",
+            ),
+            [
+                "scripts/session.py",
+                "start",
+                "algorithm/arrays/two_sum",
+                "--mode",
+                "implement",
+                "--minutes",
+                "30",
+            ],
+        ),
         (("practice-start", "comments"), ["start", "comments"]),
         (
             ("practice-start", "comments", "arrays; echo bad", "two_sum"),
@@ -93,9 +118,7 @@ def test_practice_arguments_reach_python_as_single_values(
 
 def test_authority_surfaces_use_one_non_editor_closeout() -> None:
     authority_paths = (
-        "AGENTS.md",
-        ".claude/skills/interviewer/SKILL.md",
-        ".claude/skills/practice-day/SKILL.md",
+        "TRACK-CONTRACT.md",
         "docs/guide/getting-started.md",
         "docs/guide/interview-practice-evidence.md",
         "docs/guide/source-of-truth.md",
@@ -117,6 +140,48 @@ def test_editor_start_cannot_execute_shell_substitution(tmp_path: Path) -> None:
     )
 
     assert captured[-2:] == [malicious_topic, "two_sum"]
+    assert not sentinel.exists()
+
+
+def test_session_finish_cannot_execute_shell_substitution(tmp_path: Path) -> None:
+    sentinel = tmp_path / "executed"
+    malicious_note = f"$(touch {sentinel}) `touch {sentinel}`"
+    captured = _captured_uv_args(tmp_path, "session", "finish", malicious_note)
+    assert captured[-1] == malicious_note
+    assert not sentinel.exists()
+
+
+@pytest.mark.parametrize(
+    "recipe", ["test", "test-watch", "test-concepts", "bench", "cov"]
+)
+def test_test_recipes_preserve_argument_boundaries(tmp_path: Path, recipe: str) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_uv = bin_dir / "uv"
+    fake_uv.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n"
+    )
+    fake_uv.chmod(0o755)
+    fake_watchexec = bin_dir / "watchexec"
+    fake_watchexec.write_text(
+        '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n'
+    )
+    fake_watchexec.chmod(0o755)
+    env = os.environ | {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+    sentinel = tmp_path / "executed"
+    selection = "first_case or second_case"
+    literal = f"$(touch {sentinel}) `touch {sentinel}`; echo unsafe"
+    proc = subprocess.run(
+        ["just", recipe, "-k", selection, "--override-ini", literal],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    captured = json.loads(proc.stdout.splitlines()[-1])
+    assert captured[-4:] == ["-k", selection, "--override-ini", literal]
     assert not sentinel.exists()
 
 

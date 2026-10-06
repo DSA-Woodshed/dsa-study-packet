@@ -16,71 +16,31 @@ opens a committed solution first. Practice work is never committed.
 
 ## Your first ten minutes
 
-1. Click Start in Codespaces. The container builds in about two minutes;
-   nothing beyond a GitHub account is required.
-2. Ask Copilot Chat for a first practice rep. One placement question comes
-   back: "Where do you want to work today: reason and code in the editor,
-   talk a problem through with no clock, or do a timed board-style rep?"
-3. There is no clock unless you ask. A nervous first session starts as a
-   conversation.
-4. Stop clean: one thing that worked, one fix, done. The next draw is queued
-   for tomorrow.
-
-One first-session example:
-
-> **Interviewer:** Two Sum, no code required. Tell me what the problem asks
-> in your own words.
->
-> **You:** Find two numbers in an array that add to a target... I would check
-> every pair? That is O(n²) and feels wrong.
->
-> **Interviewer:** Not wrong: a baseline. Say it like that: brute force is n
-> squared, and here is what I would trade to beat it.
->
-> **You:** Okay, a hash map. One pass, check for the complement as I go.
->
-> **Interviewer:** That is the whole move. Walk me through [3, 1, 4] with
-> target 5 and we are done for today. One clean rep is the win.
+1. Open Codespaces or your local Dev Container. Basic practice needs no
+   private credential or assistant subscription.
+2. Run `just session`. Choose your intent, how much time you have,
+   and an exact activity.
+3. There is no clock unless you choose one. An untimed conversation and
+   a timed board rep train different skills.
+4. Stop with one useful correction; the next review remains in your queue.
 
 ## 1. Start a rep
 
-[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
+[:octicons-mark-github-24: Open in GitHub Codespaces](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1){ .md-button .md-button--primary }
 
-Open Copilot Chat and enter one command:
-
-```text
-/comments
-/reacto
-/clarp
-/umpire
-```
-
-With no arguments, the command draws the next due problem. To choose one,
-append its topic and name:
-
-```text
-/comments arrays two_sum
-```
-
-Each command asks for the same interview signals. Plain comments use natural
-language; the named frameworks add optional headings.
-
-| Command | Scaffolding |
-|---------|-------------|
-| `/comments` | Ordinary comments in your own words, with no required labels or prefixes |
-| `/reacto` | Repeat, Examples, Approach, Code, Test, Optimize |
-| `/clarp` | Clarify, Lay out, Attack, Run, Polish |
-| `/umpire` | Understand, Match, Plan, Implement, Review, Evaluate |
-
-Copilot needs no repository API key, but you must confirm that Chat is signed
-in and available in the VS Code UI. It conducts the rep, while portable `just`
-commands create the workspace and run tests. Without Copilot, start from a
-terminal:
+Use the guided session or start a comments-mode rep directly:
 
 ```bash
+just session
 just practice-start comments
-just practice-start clarp arrays two_sum
+just practice-start comments arrays two_sum
 ```
+
+Without a topic, the direct practice command draws the next due problem.
+Ordinary source comments and docstrings need no required labels. Optional
+`reacto`, `clarp`, and `umpire` modes offer named scaffolding for the same loop.
+An assistant selected on your contribution fork can use these public commands.
+It has no separate practice engine or product authority.
 
 To study first, open read-only source and test snapshots. Start a candidate
 pair only when ready to implement or write tests. Snapshot tests are reading
@@ -106,14 +66,14 @@ In the source file:
 1. Restate the problem and note any questions.
 2. Write one example and one edge case.
 3. Name an approach and its expected time and space cost.
-4. Save, then enter `/continue` or run `just practice-next`.
+4. Save, then run `just practice-next`.
 5. Implement the solution, using comments alongside code where they help.
 6. Add focused tests, trace one example, and update comments that no longer
    match the code.
 
-Write your comments in the file, not the Chat composer. The interviewer reads
-only saved work, so enter `/continue` after a save or run `just
-practice-next`. It never writes your code or tests.
+Write your comments in the source file. `just practice-next` reads saved work
+and reports one current state and next action. You own source and test edits;
+chosen feedback tools can discuss that work.
 
 The workspace is gitignored. Starting a different rep archives the previous
 workspace under `.challenges/history/`. Starting the same unfinished rep
@@ -144,10 +104,9 @@ just practice-finish "trace the example before running tests"
 ```
 
 The goal is a useful correction, not a solve count. An unfinished
-implementation or failing test can still produce a good rep. At `STATE:
-CLOSE`, `practice-finish` reruns the focused tests once and records the result.
-An earlier closeout records `not_run`. Either path closes the rep instead of
-trapping you in it.
+implementation or failing test can still produce a good rep. `just practice-test` is the explicit test action. Finish records the existing
+receipt without silently running tests. Missing or stale evidence remains
+visible in the closeout; an earlier closeout can record `not_run`.
 
 For a talk-only or board rep, use one atomic closeout with the exact draw:
 

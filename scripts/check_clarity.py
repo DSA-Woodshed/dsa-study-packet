@@ -1,4 +1,4 @@
-"""Guard concise, low-ambiguity agent and onboarding surfaces.
+"""Guard concise, low-ambiguity product and onboarding surfaces.
 
 Run with the repository root by default, or pass another root to inspect a
 fixture or checkout::
@@ -17,18 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SURFACE_BUDGETS: dict[str, int] = {
     "llms.txt": 300,
     "agent-map.md": 300,
-    "AGENTS.md": 1000,
     "TRACK-CONTRACT.md": 800,
-    "CLAUDE.md": 80,
-    ".claude/skills/interviewer/SKILL.md": 500,
-    ".claude/skills/practice-day/SKILL.md": 500,
-    ".github/agents/interviewer.agent.md": 180,
-    ".github/copilot-instructions.md": 1000,
-    ".github/prompts/reacto.prompt.md": 90,
-    ".github/prompts/clarp.prompt.md": 90,
-    ".github/prompts/umpire.prompt.md": 90,
-    ".github/prompts/comments.prompt.md": 90,
-    ".github/prompts/continue.prompt.md": 90,
     ".devcontainer/welcome.sh": 300,
     "README.md": 650,
     "WELCOME.md": 300,
@@ -66,7 +55,6 @@ DESCRIPTION_SURFACES: tuple[str, ...] = (
 )
 
 EM_DASH = "\u2014"
-PRACTICE_DAY_SKILL = ".claude/skills/practice-day/SKILL.md"
 UNRESOLVED_STRINGS: dict[str, str] = {
     "study-spaced N": "replace N with a concrete draw count or a command that draws internally",
     "C_ L_ A_ R_ P_": "replace score blanks with concrete input or an atomic closeout command",
@@ -119,14 +107,6 @@ def check(root: Path) -> list[str]:
             if unresolved in text:
                 failures.append(
                     f'{relative}: contains unresolved instruction "{unresolved}"; {remedy}'
-                )
-
-        if relative == PRACTICE_DAY_SKILL:
-            description = frontmatter_description(text)
-            if description is not None and "let's practice" in description.casefold():
-                failures.append(
-                    f'{relative}: description claims generic "let\'s practice"; '
-                    "reserve this skill for an explicit practice day or full block"
                 )
 
     for relative in DESCRIPTION_SURFACES:

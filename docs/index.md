@@ -15,7 +15,7 @@ comments, implement a solution, write focused tests, and keep one correction.
 
     Open Codespaces and begin an editor rep.
 
-    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/Jesssullivan/dsa-study-packet?quickstart=1)
+    [:octicons-mark-github-24: Open in Codespaces](https://codespaces.new/DSA-Woodshed/dsa-study-packet?quickstart=1)
 
 -   :material-code-braces:{ .lg .middle } **Practice Problems**
 
@@ -45,18 +45,15 @@ comments, implement a solution, write focused tests, and keep one correction.
 
 ## Your first rep
 
-Confirm Copilot Chat is signed in and available in Codespaces, then enter
-`/comments`. The command starts a rep; put the reasoning itself in ordinary
-source comments or docstrings, with no required labels or prefixes. With no
-arguments, the command draws the next due problem. Add a topic and problem to
-choose one, such as `/comments arrays two_sum`. If named vocabulary helps you
-think, `/reacto`, `/clarp`, and `/umpire` start the same loop with optional
-labels.
+Start with `just session` to choose an intent, a time budget, and an activity.
+For a direct rep, run `just practice-start comments`; no topic is required.
+Choose a pair with `just practice-start comments arrays two_sum`.
+Basic practice needs no private credential or assistant subscription.
 
 Your source and test file open under `.challenges/workspace/`. Write ordinary
-comments or docstrings in the source file, not Chat. Save, then enter
-`/continue` for the next instruction. Implement and add focused tests.
-Copilot is optional; `just practice-start comments` starts the same loop.
+comments or docstrings in the source file, save, then run `just practice-next`.
+Implement and add focused tests. Optional named modes offer scaffolding for
+the same loop; chosen assistant tools use the same product commands.
 
 ```bash
 just practice-next

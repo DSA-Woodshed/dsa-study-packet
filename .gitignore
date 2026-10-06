@@ -43,9 +43,6 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# Tracked on purpose: the @AGENTS.md pointer stub for Claude Code
-# (overrides any local excludes that ignore ad-hoc CLAUDE.md files)
-!CLAUDE.md
 *.swp
 *.swo
 *~
@@ -75,9 +72,6 @@ docs/assets/sheets/
 
 # Challenge mode (incl. personal rep scores — publish aggregates deliberately, never raw)
 .challenges/
-
-# Agent-workflow scratch worktrees
-.claude/worktrees/
 
 # Bazel
 /bazel-*

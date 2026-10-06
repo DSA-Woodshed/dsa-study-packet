@@ -1,4 +1,4 @@
-"""Tests for the agent and onboarding clarity guard."""
+"""Tests for the product and onboarding clarity guard."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from check_clarity import (  # type: ignore[import-not-found]
     DESCRIPTION_MAX_CHARS,
     DESCRIPTION_SURFACES,
     EM_DASH,
-    PRACTICE_DAY_SKILL,
     SURFACE_BUDGETS,
     UNRESOLVED_STRINGS,
     check,
@@ -25,13 +24,7 @@ def make_valid_surfaces(root: Path) -> None:
     for relative in SURFACE_BUDGETS:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        if relative == PRACTICE_DAY_SKILL:
-            path.write_text(
-                "---\nname: practice-day\n"
-                "description: Run an explicit full practice day\n---\n\nDo the block.\n"
-            )
-        else:
-            path.write_text("Compact instructions.\n")
+        path.write_text("Compact instructions.\n")
 
     for relative in DESCRIPTION_SURFACES:
         path = root / relative
@@ -61,7 +54,7 @@ def test_missing_surface_is_actionable(tmp_path: Path) -> None:
 
 def test_word_budget_reports_required_cut(tmp_path: Path) -> None:
     make_valid_surfaces(tmp_path)
-    relative = "AGENTS.md"
+    relative = "TRACK-CONTRACT.md"
     budget = SURFACE_BUDGETS[relative]
     (tmp_path / relative).write_text("word " * (budget + 3))
 
@@ -85,27 +78,13 @@ def test_actual_em_dash_is_rejected(tmp_path: Path) -> None:
 @pytest.mark.parametrize("unresolved", tuple(UNRESOLVED_STRINGS))
 def test_unresolved_instruction_is_rejected(tmp_path: Path, unresolved: str) -> None:
     make_valid_surfaces(tmp_path)
-    relative = ".claude/skills/interviewer/SKILL.md"
+    relative = "WELCOME.md"
     (tmp_path / relative).write_text(f"Run {unresolved} now.\n")
 
     failures = check(tmp_path)
 
     assert len(failures) == 1
     assert f'contains unresolved instruction "{unresolved}"' in failures[0]
-
-
-def test_practice_day_rejects_generic_trigger_in_description(tmp_path: Path) -> None:
-    make_valid_surfaces(tmp_path)
-    (tmp_path / PRACTICE_DAY_SKILL).write_text(
-        "---\nname: practice-day\n"
-        "description: Use when candidates say Let's Practice\n---\n\n"
-        "Run an explicit practice day.\n"
-    )
-
-    failures = check(tmp_path)
-
-    assert len(failures) == 1
-    assert "description claims generic" in failures[0]
 
 
 def test_public_surface_requires_frontmatter_description(tmp_path: Path) -> None:
@@ -133,17 +112,6 @@ def test_public_surface_description_has_length_limit(tmp_path: Path) -> None:
         f"{relative}: frontmatter description is {len(description)} characters; "
         f"keep it at or below {DESCRIPTION_MAX_CHARS}"
     ]
-
-
-def test_generic_phrase_outside_description_does_not_trigger(tmp_path: Path) -> None:
-    make_valid_surfaces(tmp_path)
-    (tmp_path / PRACTICE_DAY_SKILL).write_text(
-        "---\nname: practice-day\n"
-        "description: Run an explicit full practice day\n---\n\n"
-        "A candidate might still say let's practice in an example.\n"
-    )
-
-    assert check(tmp_path) == []
 
 
 def test_main_accepts_optional_root_and_reports_failures(
