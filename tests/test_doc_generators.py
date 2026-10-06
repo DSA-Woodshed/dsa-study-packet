@@ -11,6 +11,8 @@ from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import cast
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -116,3 +118,46 @@ def test_progress_reads_finish_output_and_renders_safe_next_steps(
     assert "`just practice-start comments arrays three_sum`: Three Sum" in page
     assert "challenge-reset" not in page
     assert "just challenge " not in page
+
+
+@pytest.mark.parametrize(
+    ("contents", "expected"),
+    [
+        (None, {}),
+        ("", {}),
+        (
+            "- [ ] arrays/two_sum 2026-10-06\n"
+            "- [x] ../private/notes 2026-10-06\n"
+            "- [X] arrays/two_sum 2026-10-06\n"
+            "  - [x] arrays/two_sum 2026-10-06\n",
+            {},
+        ),
+        (
+            "- [x] arrays/two_sum: old\n"
+            "- [x] arrays/two_sum \u2014 2026-10-06\n"
+            "- [x] trees/invert_tree\n"
+            "- [x] arrays/three_sum unparseable date\n"
+            "- [x] unknown/not_core 2026-10-06\n",
+            {
+                "arrays/two_sum": "2026-10-06",
+                "trees/invert_tree": "",
+                "arrays/three_sum": "unparseable date",
+                "unknown/not_core": "2026-10-06",
+            },
+        ),
+    ],
+)
+def test_progress_consumers_preserve_existing_completion_labels(
+    tmp_path: Path, contents: str | None, expected: dict[str, str]
+) -> None:
+    _, namespace = load_generator("gen_progress_page")
+    import study_schedule
+
+    progress = tmp_path / "progress.md"
+    if contents is not None:
+        progress.write_text(contents)
+    parse = cast("FunctionType", namespace["_parse_progress"])
+    parse.__globals__["PROGRESS_FILE"] = progress
+
+    assert parse() == expected
+    assert study_schedule._completed(progress) == expected
