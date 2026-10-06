@@ -1,4 +1,4 @@
-"""Tests for owner-link inventory and packet Pages retirement preparation."""
+"""Tests for owner-link inventory and packet Pages retirement boundary."""
 
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def test_pages_workflow_is_caught(tmp_path: Path) -> None:
 
     assert (
         ".github/workflows/docs.yml: packet Pages deployment must remain absent "
-        "before legacy setting retirement"
+        "after retirement"
     ) in check(tmp_path)
 
 
@@ -132,7 +132,7 @@ def test_raw_gh_pages_push_is_caught(tmp_path: Path) -> None:
 
     assert (
         ".github/workflows/legacy-pages.yml: packet Pages deployment must remain "
-        "absent before legacy setting retirement"
+        "absent after retirement"
     ) in check(tmp_path)
 
 
@@ -169,3 +169,19 @@ def test_org_product_branch_is_not_a_personal_fork_acceptance_source(
     assert any(
         "missing personal-fork acceptance URL" in item for item in check(tmp_path)
     )
+
+
+def test_enabled_pages_notice_is_rejected_after_retirement(tmp_path: Path) -> None:
+    _mirror_contract(tmp_path)
+    source_truth = tmp_path / "docs/guide/source-of-truth.md"
+    source_truth.write_text(
+        source_truth.read_text().replace(
+            "The packet's legacy GitHub Pages setting\nand its `gh-pages` branch are retired.",
+            "The packet's legacy GitHub Pages setting remains enabled because "
+            "GitHub rejects deactivation.",
+        )
+    )
+
+    assert (
+        "docs/guide/source-of-truth.md: missing legacy Pages retirement notice"
+    ) in check(tmp_path)

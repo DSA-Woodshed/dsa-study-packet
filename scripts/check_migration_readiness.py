@@ -56,9 +56,8 @@ ISSUE_TEMPLATE_SURFACES = (
 )
 INTENTIONAL_FIXTURE_SURFACES = frozenset({"tests/test_migration_readiness.py"})
 
-PAGES_CONTINUITY_NOTICE = (
-    "The packet's legacy GitHub Pages setting remains enabled because "
-    "GitHub rejects deactivation"
+PAGES_RETIREMENT_NOTICE = (
+    "The packet's legacy GitHub Pages setting and its `gh-pages` branch are retired"
 )
 PAGES_WORKFLOW_MARKERS = (
     "actions/configure-pages",
@@ -232,9 +231,9 @@ def check(root: Path) -> list[str]:
 
     source_truth_path = root / "docs/guide/source-of-truth.md"
     source_truth = source_truth_path.read_text() if source_truth_path.is_file() else ""
-    if PAGES_CONTINUITY_NOTICE not in " ".join(source_truth.split()):
+    if PAGES_RETIREMENT_NOTICE not in " ".join(source_truth.split()):
         failures.append(
-            "docs/guide/source-of-truth.md: missing legacy Pages continuity notice"
+            "docs/guide/source-of-truth.md: missing legacy Pages retirement notice"
         )
     workflows = root / ".github/workflows"
     for workflow_path in sorted((*workflows.glob("*.yml"), *workflows.glob("*.yaml"))):
@@ -242,7 +241,7 @@ def check(root: Path) -> list[str]:
         if any(marker in workflow for marker in PAGES_WORKFLOW_MARKERS):
             failures.append(
                 f"{workflow_path.relative_to(root).as_posix()}: packet Pages "
-                "deployment must remain absent before legacy setting retirement"
+                "deployment must remain absent after retirement"
             )
 
     for relative in ISSUE_TEMPLATE_SURFACES:
@@ -261,7 +260,7 @@ def main() -> int:
         return 1
     print(
         "Migration readiness passed: owner links, Codespaces entrypoints, "
-        "release path, canonical metadata, issue templates, and Pages retirement preparation agree."
+        "release path, canonical metadata, issue templates, and Pages retirement boundary agree."
     )
     return 0
 

@@ -42,8 +42,8 @@ before it prerenders
 content; the site repository owns the shell, navigation, and rendering. The
 local `site/` output is a development artifact, not the production deployment.
 The canonical reading site is live. The packet's legacy GitHub Pages setting
-remains enabled because GitHub rejects deactivation. Its preserved `gh-pages`
-branch still exists. No main-branch workflow deploys packet Pages.
+and its `gh-pages` branch are retired. No main-branch workflow deploys packet
+Pages; never restore a second reading surface.
 
 ## Three Layers
 
