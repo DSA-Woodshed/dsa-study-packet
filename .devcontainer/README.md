@@ -15,6 +15,9 @@ The small Dockerfile adds a pinned public OpenSSH server for the official
 Codespaces CLI tunnel. Machine host keys are generated during `postStartCommand`,
 not included in the image; Codespaces manages SSH authentication. This server
 does not install assistant extensions or instructions.
+Generating machine keys uses the base image's passwordless sudo inside the
+container. Codespaces supplies its normal startup permissions.
+
 The configuration mounts no host Docker socket, age key, signing key, or provider
 credential. Local development can use rootless Podman; Codespaces owns its own
 container runtime and platform setup. Runtime capability flags belong to a
@@ -37,3 +40,8 @@ Local checks do not prove cloud readiness. Acceptance of a new Codespace require
 its exact source SHA, cold setup, a complete practice session, editor opening,
 stop/resume and rebuild readback of candidate files. Protected capabilities also
 require independently commissioned identity and an actual adapter acceptance.
+
+The public lifecycle and headless practice loop passed a fresh hosted acceptance
+on 2026-10-06 at `224cdb0fcf6f6693eed4ee8f142fc3c3722c4abb`; see
+[the recorded scope](../docs/guide/portable-environment.md). Native editor
+attachment remains a separate interactive check.
