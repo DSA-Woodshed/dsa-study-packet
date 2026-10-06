@@ -57,8 +57,8 @@ ISSUE_TEMPLATE_SURFACES = (
 INTENTIONAL_FIXTURE_SURFACES = frozenset({"tests/test_migration_readiness.py"})
 
 PAGES_CONTINUITY_NOTICE = (
-    "The packet's legacy GitHub Pages setting remains enabled pending "
-    "validated production-site cutover"
+    "The packet's legacy GitHub Pages setting remains enabled because "
+    "GitHub rejects deactivation"
 )
 PAGES_WORKFLOW_MARKERS = (
     "actions/configure-pages",
