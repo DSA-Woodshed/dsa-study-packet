@@ -98,11 +98,9 @@ just packet
 
 `just` is the front door. `just check` runs the public maintainer graph and
 runtime integration checks; `just packet` builds the printable booklet locally.
-The retired Flywheel cache/profile integration has been removed. Existing
-`just remote-*` names return unavailable (exit 78), even if an old profile or
-cache variable is present. Remote execution needs an installed,
-authenticated adopter-owned admission path and runtime evidence; neither is
-supplied here. `//:booklet` is the neutral PDF composition surface for private
+The retired Flywheel profile integration is removed. `just remote-*` returns
+unavailable (exit 78); remote execution requires installed, authenticated
+admission. `//:booklet` is the neutral PDF composition surface for private
 overlays. The tracked source also generates
 local docs, algorithm pages, and reference-sheet PDFs; the reading site syncs
 that content separately.
