@@ -1,6 +1,8 @@
 {
 	"name": "The DSA Woodshed",
-	"image": "mcr.microsoft.com/devcontainers/base@sha256:bb7b81b6e5be17b5267f92f4ffda534fea37dab1df97b5e86c1f9b91da5c0b5d",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
 	"onCreateCommand": "bash .devcontainer/setup.sh --tools",
 	"updateContentCommand": "bash .devcontainer/setup.sh --sync",
 	"postCreateCommand": "bash .devcontainer/setup.sh --seed",

@@ -11,6 +11,10 @@ prepares private practice storage; `postStartCommand` checks readiness without
 starting a practice session. Repeating setup preserves candidate work.
 
 The base image is pinned by digest, and practice commands run as `vscode`.
+The small Dockerfile adds a pinned public OpenSSH server for the official
+Codespaces CLI tunnel. Machine host keys are generated during `onCreateCommand`,
+not included in the image; Codespaces manages SSH authentication. This server
+does not install assistant extensions or instructions.
 The configuration mounts no host Docker socket, age key, signing key, or provider
 credential. Local development can use rootless Podman; Codespaces owns its own
 container runtime and platform setup. Runtime capability flags belong to a
