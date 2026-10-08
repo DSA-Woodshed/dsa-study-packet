@@ -33,20 +33,20 @@ jobs:
 
       # Pinned by commit with the release tag as a comment, matching ci.yml.
       - name: Install uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.11.27" # matches UV_VERSION in .devcontainer/setup.sh
           prune-cache: "true" # preserve the pre-v9 cache-size behavior
 
       - name: Install just
-        uses: taiki-e/install-action@v2.86.2
+        uses: taiki-e/install-action@v2.87.25
         with:
           tool: just@1.40.0
 
       - name: Install dependencies
         run: just deps-sync
 
-      - uses: bazel-contrib/setup-bazel@8cb04a772ab4c1eb984e9c1b493a182e96c5e425
+      - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86
         with:
           bazelisk-cache: true
           repository-cache: true
